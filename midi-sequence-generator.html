@@ -458,7 +458,17 @@
                     </div>
                     <input type="file" id="import-file" accept=".json" style="display:none;">
 
-                </section>
+                                    <div class="section-box" style="margin-top:0.7rem; padding:0.9rem;">
+                                        <h3>How It Works</h3>
+                                        <div style="color: #c9deff; font-size:0.95rem; line-height:1.35;">
+                                            <p style="margin:0 0 0.35rem 0;">The generator builds a song by assembling the parts defined by the selected structure (AABA, ABBA, Verse-Chorus, or Custom). Each structure lists named parts (Intro, Verse, Bridge, etc.) and a default step count for that part; the final length uses the smaller of the part's step count and the "Max Steps" setting.</p>
+                                            <p style="margin:0 0 0.35rem 0;">Notes are chosen pseudo-randomly from the selected scale and root: for every step the code randomly decides whether to place a note or a rest based on the Density setting, then selects a scale degree at random and occasionally shifts octaves for variation. Velocity and gate (note on/off) are also randomized within safe ranges to create natural variation.</p>
+                                            <p style="margin:0 0 0.35rem 0;">Clock modes affect timing and MIDI transport: <strong>Clock off</strong> runs the internal sequencer only; <strong>Clock out</strong> makes the app send MIDI clock and transport messages so external devices can follow this sequencer; <strong>Clock in</strong> waits for an external MIDI clock/Start signal — when set to Clock in the UI will arm the song and playback will begin only after an external MIDI Start (0xFA) or sufficient clock ticks arrive.</p>
+                                            <p style="margin:0;">In short — structure controls part order and lengths; density controls how often notes appear; scale/root constrain which pitches are used; randomness selects degrees, octave shifts, velocities and rests, producing different realizations each time you press "Generate All".</p>
+                                        </div>
+                                    </div>
+
+                                </section>
 
                 <section class="section-box" aria-label="Song parts">
                     <h3>Song Sections</h3>
