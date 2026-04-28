@@ -441,9 +441,9 @@
                         <h3>Song Structure</h3>
                         <div class="song-structure-grid">
                             <button type="button" class="structure-preset active" data-structure="aaba">AABA</button>
-                            <button type="button" class="structure-preset" data-structure="abba">ABBA</button>
                             <button type="button" class="structure-preset" data-structure="verse-chorus">Verse-Chorus</button>
-                            <button type="button" class="structure-preset" data-structure="custom">Custom</button>
+                            <button type="button" class="structure-preset" data-structure="abab">ABAB</button>
+                            <button type="button" class="structure-preset" data-structure="ababcb">ABABCB</button>
                         </div>
                     </div>
 
@@ -461,11 +461,12 @@
                                     <div class="section-box" style="margin-top:0.7rem; padding:0.9rem;">
                                         <h3>How It Works</h3>
                                         <div style="color: #c9deff; font-size:0.95rem; line-height:1.35;">
-                                            <p style="margin:0 0 0.35rem 0;">The generator builds a song by assembling the parts defined by the selected structure (AABA, ABBA, Verse-Chorus, or Custom). Each structure lists named parts (Intro, Verse, Bridge, etc.) and a default step count for that part; the final length uses the smaller of the part's step count and the "Max Steps" setting.</p>
-                                            <p style="margin:0 0 0.35rem 0;">Notes are chosen pseudo-randomly from the selected scale and root: for every step the code randomly decides whether to place a note or a rest based on the Density setting, then selects a scale degree at random and occasionally shifts octaves for variation. Velocity and gate (note on/off) are also randomized within safe ranges to create natural variation.</p>
-                                            <p style="margin:0 0 0.35rem 0;">Clock modes affect timing and MIDI transport: <strong>Clock off</strong> runs the internal sequencer only; <strong>Clock out</strong> makes the app send MIDI clock and transport messages so external devices can follow this sequencer; <strong>Clock in</strong> waits for an external MIDI clock/Start signal — when set to Clock in the UI will arm the song and playback will begin only after an external MIDI Start (0xFA) or sufficient clock ticks arrive.</p>
-                                            <p style="margin:0;">In short — structure controls part order and lengths; density controls how often notes appear; scale/root constrain which pitches are used; randomness selects degrees, octave shifts, velocities and rests, producing different realizations each time you press "Generate All".</p>
-                                        </div>
+                                            <p style="margin:0 0 0.35rem 0;">This generator is based on the common song-form descriptions in <a href="https://en.wikipedia.org/wiki/Song_structure" target="_blank" rel="noreferrer">Song structure on Wikipedia.</a></p>
+                                            <p style="margin:0 0 0.35rem 0;">In this app, the selected form controls the order and role of each section, while the generated music is produced with a simple rule-based sequence engine.</p>
+                                            <p style="margin:0 0 0.35rem 0;">AABA uses two A sections, a contrasting B section, and a final A return. ABAB alternates A and B material. ABABCB extends that idea with a bridge-like C section before the last B return. Verse-Chorus uses intro, verse, pre-chorus, chorus, bridge, and outro roles so the sections feel more distinct.</p>
+                                            <p style="margin:0 0 0.35rem 0;">Each part gets its own profile for density, velocity range, octave placement, and melodic contour. Notes are still randomized inside the selected scale and root, but the randomness is shaped by the section type, so choruses tend to be denser and higher, bridges contrast more, and intros/outros stay lighter.</p>
+                                            <p style="margin:0 0 0.35rem 0;">Clock modes affect timing and MIDI transport: <strong>Clock off</strong> runs the internal sequencer only; <strong>Clock out</strong> sends MIDI clock and transport messages; <strong>Clock in</strong> arms playback and waits for an external MIDI Start (or incoming clock ticks) before the song begins.</p>
+                                            <p style="margin:0;">In short, structure controls the section order, profile and contrast; scale/root constrain the pitch pool; density adjusts how active each part feels; and randomness selects the exact notes, octaves, velocities, and rests. 
                                     </div>
 
                                 </section>
@@ -485,21 +486,21 @@
                 name: "AABA Form",
                 parts: [
                     { name: "Intro", steps: 8, density: 3 },
-                    { name: "Verse A", steps: 16, density: 4 },
-                    { name: "Verse A Repeat", steps: 16, density: 4 },
-                    { name: "Bridge B", steps: 16, density: 5 },
-                    { name: "Verse A Return", steps: 16, density: 4 },
+                    { name: "A1", steps: 8, density: 4 },
+                    { name: "A2", steps: 8, density: 4 },
+                    { name: "B", steps: 8, density: 5 },
+                    { name: "A3", steps: 8, density: 4 },
                     { name: "Outro", steps: 8, density: 2 }
                 ]
             },
-            abba: {
-                name: "ABBA Form",
+            abab: {
+                name: "ABAB Form",
                 parts: [
                     { name: "Intro", steps: 8, density: 3 },
-                    { name: "Theme A", steps: 16, density: 4 },
-                    { name: "Theme B", steps: 16, density: 5 },
-                    { name: "Theme B Repeat", steps: 16, density: 5 },
-                    { name: "Theme A Return", steps: 16, density: 4 },
+                    { name: "A1", steps: 8, density: 4 },
+                    { name: "B1", steps: 8, density: 5 },
+                    { name: "A2", steps: 8, density: 4 },
+                    { name: "B2", steps: 8, density: 5 },
                     { name: "Outro", steps: 8, density: 2 }
                 ]
             },
@@ -507,9 +508,9 @@
                 name: "Verse-Chorus Form",
                 parts: [
                     { name: "Intro", steps: 8, density: 2 },
-                    { name: "Verse", steps: 16, density: 4 },
+                    { name: "Verse 1", steps: 16, density: 4 },
                     { name: "Pre-Chorus", steps: 8, density: 5 },
-                    { name: "Chorus", steps: 16, density: 6 },
+                    { name: "Chorus 1", steps: 16, density: 6 },
                     { name: "Verse 2", steps: 16, density: 4 },
                     { name: "Pre-Chorus 2", steps: 8, density: 5 },
                     { name: "Chorus 2", steps: 16, density: 6 },
@@ -518,15 +519,16 @@
                     { name: "Outro", steps: 8, density: 2 }
                 ]
             },
-            custom: {
-                name: "Custom Form",
+            ababcb: {
+                name: "ABABCB Form",
                 parts: [
                     { name: "Intro", steps: 8, density: 3 },
-                    { name: "Verse", steps: 16, density: 4 },
-                    { name: "Chorus", steps: 16, density: 5 },
-                    { name: "Verse 2", steps: 16, density: 4 },
-                    { name: "Chorus 2", steps: 16, density: 5 },
-                    { name: "Bridge", steps: 16, density: 6 },
+                    { name: "A1", steps: 8, density: 4 },
+                    { name: "B1", steps: 8, density: 5 },
+                    { name: "A2", steps: 8, density: 4 },
+                    { name: "B2", steps: 8, density: 5 },
+                    { name: "C Bridge", steps: 8, density: 6 },
+                    { name: "B3", steps: 8, density: 5 },
                     { name: "Outro", steps: 8, density: 2 }
                 ]
             }
@@ -642,18 +644,176 @@
             midiOutput.send([0xFC]);
         }
 
-        function generateSequenceForPart(steps, root, scale, density) {
+        function clamp(value, min, max) {
+            return Math.max(min, Math.min(max, value));
+        }
+
+        function randomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function pickRandom(values) {
+            return values[Math.floor(Math.random() * values.length)];
+        }
+
+        function getStructureRole(structureKey, partName) {
+            const normalizedName = partName.toLowerCase();
+
+            if (normalizedName.includes("intro")) return "intro";
+            if (normalizedName.includes("outro")) return "outro";
+
+            if (structureKey === "verse-chorus") {
+                if (normalizedName.includes("pre-chorus")) return "prechorus";
+                if (normalizedName.includes("chorus")) return "chorus";
+                if (normalizedName.includes("bridge")) return "bridge";
+                return "verse";
+            }
+
+            if (structureKey === "ababcb") {
+                if (normalizedName.includes("c bridge")) return "bridge";
+                if (normalizedName.startsWith("b")) return "b";
+                return "a";
+            }
+
+            if (structureKey === "abab") {
+                return normalizedName.startsWith("b") ? "b" : "a";
+            }
+
+            if (structureKey === "aaba") {
+                return normalizedName.startsWith("b") ? "bridge" : "a";
+            }
+
+            return "verse";
+        }
+
+        function getRoleProfile(role, scaleLength, partIndex, totalParts) {
+            const topIndex = Math.max(0, scaleLength - 1);
+            const middleIndex = Math.max(0, Math.floor(topIndex / 2));
+            const sharedProfile = {
+                densityBias: 0,
+                noteChance: 0.55,
+                gateChance: 0.82,
+                velocityMin: 84,
+                velocityMax: 108,
+                octaveShift: 0,
+                motif: [0, middleIndex, topIndex, middleIndex],
+                accents: [0.08, 0, 0.12, -0.04]
+            };
+
+            const profiles = {
+                intro: {
+                    densityBias: -2,
+                    noteChance: 0.42,
+                    gateChance: 0.92,
+                    velocityMin: 72,
+                    velocityMax: 94,
+                    octaveShift: -12,
+                    motif: [0, 0, middleIndex, 0],
+                    accents: [0.12, -0.08, 0.06, 0]
+                },
+                outro: {
+                    densityBias: -2,
+                    noteChance: 0.45,
+                    gateChance: 0.94,
+                    velocityMin: 72,
+                    velocityMax: 90,
+                    octaveShift: -12,
+                    motif: [0, middleIndex, 0, 0],
+                    accents: [0.1, 0, -0.04, 0.08]
+                },
+                a: {
+                    densityBias: -1,
+                    noteChance: 0.58,
+                    gateChance: 0.84,
+                    velocityMin: 82,
+                    velocityMax: 106,
+                    octaveShift: 0,
+                    motif: [0, middleIndex, topIndex, middleIndex, 0, middleIndex],
+                    accents: [0.08, 0, 0.1, -0.03, 0.07, 0]
+                },
+                b: {
+                    densityBias: 1,
+                    noteChance: 0.62,
+                    gateChance: 0.8,
+                    velocityMin: 88,
+                    velocityMax: 112,
+                    octaveShift: 0,
+                    motif: [middleIndex, topIndex, topIndex, middleIndex, Math.max(0, topIndex - 1), middleIndex],
+                    accents: [0.12, 0.15, 0.05, 0.1, 0.08, 0.14]
+                },
+                verse: {
+                    densityBias: -1,
+                    noteChance: 0.56,
+                    gateChance: 0.82,
+                    velocityMin: 80,
+                    velocityMax: 104,
+                    octaveShift: 0,
+                    motif: [0, middleIndex, topIndex, middleIndex, 0, 1, middleIndex, 1],
+                    accents: [0.07, 0, 0.06, -0.03, 0.05, 0, 0.08, 0]
+                },
+                prechorus: {
+                    densityBias: 1,
+                    noteChance: 0.63,
+                    gateChance: 0.78,
+                    velocityMin: 86,
+                    velocityMax: 112,
+                    octaveShift: 0,
+                    motif: [middleIndex, middleIndex + 1, topIndex, topIndex, Math.max(0, topIndex - 1), topIndex],
+                    accents: [0.08, 0.1, 0.12, 0.1, 0.08, 0.14]
+                },
+                chorus: {
+                    densityBias: 2,
+                    noteChance: 0.72,
+                    gateChance: 0.9,
+                    velocityMin: 92,
+                    velocityMax: 118,
+                    octaveShift: 12,
+                    motif: [0, middleIndex, topIndex, middleIndex, topIndex, middleIndex, 0, topIndex],
+                    accents: [0.14, 0.08, 0.16, 0.1, 0.18, 0.08, 0.14, 0.12]
+                },
+                bridge: {
+                    densityBias: 0,
+                    noteChance: 0.6,
+                    gateChance: 0.76,
+                    velocityMin: 88,
+                    velocityMax: 114,
+                    octaveShift: 12,
+                    motif: [topIndex, topIndex, middleIndex, topIndex, Math.max(0, topIndex - 2), middleIndex],
+                    accents: [0.1, 0.12, 0.06, 0.11, 0.04, 0.09]
+                }
+            };
+
+            const profile = profiles[role] || sharedProfile;
+            const sectionLift = totalParts > 1 ? partIndex / (totalParts - 1) : 0;
+
+            return {
+                ...sharedProfile,
+                ...profile,
+                noteChance: clamp((profile.noteChance ?? sharedProfile.noteChance) + sectionLift * 0.06, 0.12, 0.95),
+                accents: profile.accents || sharedProfile.accents
+            };
+        }
+
+        function generateSequenceForPart(part, structureKey, partIndex, totalParts, root, scale, density) {
             const intervals = getScaleIntervals(scale);
-            return Array.from({ length: steps }, (_, index) => {
-                const useNote = Math.floor(Math.random() * 8) < density;
-                const degree = intervals[Math.floor(Math.random() * intervals.length)];
-                const octaveShift = index % 8 === 7 ? 12 : (Math.random() > 0.8 ? 12 : 0);
-                const note = useNote ? root + degree + octaveShift : root + intervals[0];
-                const velocity = Math.floor(88 + Math.random() * 32);
+            const role = getStructureRole(structureKey, part.name);
+            const profile = getRoleProfile(role, intervals.length, partIndex, totalParts);
+            const motif = profile.motif.map((degree) => clamp(degree, 0, Math.max(0, intervals.length - 1)));
+            const densityScore = clamp((density + profile.densityBias) / 8, 0.1, 0.95);
+            return Array.from({ length: part.steps }, (_, index) => {
+                const motifDegree = motif[index % motif.length];
+                const accent = profile.accents[index % profile.accents.length] || 0;
+                const contourPush = role === "chorus" || role === "bridge" ? (index >= Math.floor(part.steps / 2) ? 0.08 : 0) : 0;
+                const useNote = Math.random() < clamp(profile.noteChance + densityScore + accent + contourPush, 0.12, 0.95);
+                const repeatedStep = index > 0 && index % 4 === 3;
+                const octaveShift = profile.octaveShift + (repeatedStep && (role === "chorus" || role === "bridge") ? 12 : 0) + (role === "prechorus" && index >= Math.floor(part.steps * 0.75) ? 12 : 0);
+                const degreeIndex = clamp(motifDegree + (role === "bridge" && index % 3 === 2 ? 1 : 0), 0, Math.max(0, intervals.length - 1));
+                const note = useNote ? root + intervals[degreeIndex] + octaveShift : root + intervals[0];
+                const velocity = clamp(randomInt(profile.velocityMin, profile.velocityMax) + (accent > 0.1 ? 6 : 0), 1, 127);
                 return {
                     note: Math.max(36, Math.min(96, note)),
                     velocity,
-                    gate: Math.random() > 0.2
+                    gate: Math.random() < profile.gateChance
                 };
             });
         }
@@ -814,10 +974,10 @@
             const structure = songStructures[currentStructure];
 
             generatedSequences = {};
-            structure.parts.forEach((part) => {
+            structure.parts.forEach((part, partIndex) => {
                 const steps = Math.min(part.steps, maxSteps);
                 const partDensity = Math.max(1, Math.min(8, Math.round((part.density + density) / 2)));
-                generatedSequences[part.name] = generateSequenceForPart(steps, root, scale, partDensity);
+                generatedSequences[part.name] = generateSequenceForPart({ ...part, steps }, currentStructure, partIndex, structure.parts.length, root, scale, partDensity);
             });
 
             renderSequenceEditors();
