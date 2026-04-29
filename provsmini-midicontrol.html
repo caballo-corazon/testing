@@ -154,10 +154,20 @@
 
         .preset-actions {
             display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.55rem;
+            margin-bottom: 0.75rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .preset-actions-row {
+            display: flex;
             flex-wrap: wrap;
             justify-content: center;
             gap: 0.75rem;
-            margin-bottom: 0.75rem;
+            width: 100%;
             position: relative;
             z-index: 1;
         }
@@ -939,6 +949,11 @@
         .preset-name {
             font-weight: bold;
             font-size: 1.2em;
+            min-height: 2.25rem;
+            width: min(100%, 260px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 0.4rem 0.75rem;
             background: linear-gradient(180deg, #1f3043, #172536);
             border-radius: 8px;
@@ -1166,9 +1181,11 @@
                             <div class="top-controls-group" aria-label="Presets">
                                 <h3>Local presets</h3>
                                 <div class="preset-actions">
-                                    <button id="save-preset-btn">💾 Save Preset</button>
-                                    <button id="load-preset-btn">📂 Load Preset</button>
-                                    <input type="file" id="preset-file" accept=".json" style="display: none;">
+                                    <div class="preset-actions-row">
+                                        <button id="save-preset-btn">💾 Save Preset</button>
+                                        <button id="load-preset-btn">📂 Load Preset</button>
+                                        <input type="file" id="preset-file" accept=".json" style="display: none;">
+                                    </div>
                                     <div class="preset-name" id="preset-name" aria-live="polite"></div>
                                 </div>
 
