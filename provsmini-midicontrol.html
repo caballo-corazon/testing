@@ -1014,22 +1014,80 @@
                 grid-template-columns: 1fr;
             }
 
+            .top-controls-group,
+            .performance-panel-box,
+            .controls-panel-box,
+            .sequence-panel {
+                min-width: 0;
+            }
+
+            .midi-row,
+            .preset-actions,
+            .preset-actions-row,
+            .lock-actions,
+            .sequence-toggle-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .midi-row label,
+            .sequence-toggle,
+            .sequence-tempo-toggle {
+                width: 100%;
+            }
+
+            .midi-row select,
+            .midi-row .status,
+            .sequence-toggle select,
+            .sequence-actions button,
+            .preset-actions-row button,
+            .preset-container button,
+            .lock-actions button,
+            .sequence-panel .sequence-grid select,
+            .sequence-panel .sequence-grid-wide select,
+            .sequence-panel .sequence-grid input,
+            .sequence-panel .sequence-grid-wide input {
+                width: 100%;
+                min-width: 0;
+            }
+
+            .sequence-grid,
+            .sequence-grid-wide,
+            .sequence-actions,
+            .envelope-groups {
+                grid-template-columns: 1fr;
+            }
+
+            .performance-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
             .performance-zone {
                 grid-template-columns: 1fr;
             }
 
             .performance-header {
-                align-items: flex-start;
+                gap: 0.45rem;
             }
 
             .performance-header-actions {
                 width: 100%;
-                justify-content: space-between;
+                flex-direction: column;
+                align-items: stretch;
+                justify-content: flex-start;
             }
 
             .sequence-display.sequence-display-header {
                 max-width: 100%;
-                flex: 1;
+                flex: 1 1 auto;
+                min-width: 0;
+                white-space: normal;
+            }
+
+            .top-controls-panel,
+            .control-section {
+                min-width: 0;
             }
 
         }
