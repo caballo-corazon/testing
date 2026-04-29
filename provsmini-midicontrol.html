@@ -1,0 +1,2694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MIDI controller for Behringer ProVS Mini with randomizer and preset management.">
+    <title>Behringer ProVS Mini - MIDI Control</title>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&display=swap");
+
+        :root {
+            --bg-1: #060c14;
+            --bg-2: #0a121d;
+            --panel: linear-gradient(160deg, #1a2331 0%, #151e2a 42%, #0f1622 100%);
+            --panel-border: #3b4f68;
+            --text: #d8e4f2;
+            --muted: #8ea1b8;
+            --accent: #3aa0ff;
+            --accent-2: #1f73d2;
+            --accent-soft: rgba(58, 160, 255, 0.2);
+            --danger: #ff7f8e;
+            --ok: #79e0a4;
+            --shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+            --radius: 14px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Barlow Condensed", "Segoe UI", "Helvetica Neue", sans-serif;
+            color: var(--text);
+            margin: 0;
+            background: radial-gradient(900px 460px at 15% -10%, #17314f 0%, transparent 58%),
+                        radial-gradient(900px 500px at 95% 10%, #0d2745 0%, transparent 52%),
+                        linear-gradient(180deg, var(--bg-2), var(--bg-1));
+            min-height: 100vh;
+            line-height: 1.4;
+        }
+
+        .container {
+            width: min(1100px, 100% - 2rem);
+            margin: 1.5rem auto 2rem auto;
+            padding: 1rem;
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .panel::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background:
+                linear-gradient(transparent 97%, rgba(58, 160, 255, 0.1) 100%),
+                repeating-linear-gradient(90deg, transparent 0 88px, rgba(58, 160, 255, 0.06) 88px 89px);
+            opacity: 0.6;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-wrap: balance;
+            text-transform: uppercase;
+            color: #e8f2ff;
+            text-shadow: 0 0 12px rgba(58, 160, 255, 0.24);
+            position: relative;
+            z-index: 1;
+        }
+
+        .subtitle {
+            margin-top: 0;
+            color: var(--muted);
+            font-size: 0.95rem;
+            letter-spacing: 0.03em;
+            position: relative;
+            z-index: 1;
+        }
+
+        .midi-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        select,
+        button,
+        input[type=file] {
+            font: inherit;
+        }
+
+        select,
+        button {
+            border: 1px solid #3c536e;
+            border-radius: 10px;
+            padding: 0.5rem 0.75rem;
+            background: linear-gradient(180deg, #243345 0%, #1a2736 100%);
+            color: var(--text);
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        button {
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 0 1px rgba(58, 160, 255, 0.25), 0 6px 16px rgba(0, 0, 0, 0.35);
+            border-color: #5baeff;
+        }
+
+        button:focus-visible,
+        select:focus-visible,
+        input[type=range]:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .status {
+            min-height: 1.5rem;
+            font-size: 0.9rem;
+            color: var(--muted);
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .status.error {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .status.ok {
+            color: var(--ok);
+            font-weight: 600;
+        }
+
+        .preset-actions {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .top-controls-box {
+            border: 1px solid #355274;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(23, 36, 51, 0.95), rgba(13, 21, 31, 0.94));
+            padding: 0.8rem;
+            box-shadow: inset 0 0 0 1px rgba(58, 160, 255, 0.07);
+            position: relative;
+            z-index: 1;
+        }
+
+        .top-controls-stack {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+        }
+
+        .top-controls-group {
+            border: 1px solid #2f4a67;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #1d2d40 0%, #162433 100%);
+            padding: 0.65rem;
+        }
+
+        .top-controls-group h3 {
+            margin: 0 0 0.55rem 0;
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: #b8d8ff;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .top-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            align-items: start;
+            margin-bottom: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .workspace-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            align-items: start;
+            position: relative;
+            z-index: 1;
+        }
+
+        .controls-panel-box,
+        .performance-panel-box {
+            border: 1px solid #355274;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(23, 36, 51, 0.95), rgba(13, 21, 31, 0.94));
+            padding: 0.8rem;
+            box-shadow: inset 0 0 0 1px rgba(58, 160, 255, 0.07);
+        }
+
+        .panel-layout {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            grid-template-areas:
+                "general general"
+                "osc osc"
+                "envelope envelope"
+                "lfo1 lfo2"
+                "filter chorus";
+            gap: 1rem;
+            margin-top: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .control-section,
+        .top-controls-panel {
+            border: 1px solid #355274;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(23, 36, 51, 0.95), rgba(13, 21, 31, 0.94));
+            padding: 0.75rem;
+            box-shadow: inset 0 0 0 1px rgba(58, 160, 255, 0.07);
+            position: relative;
+        }
+
+        .control-section::before,
+        .top-controls-panel::before {
+            content: "";
+            position: absolute;
+            left: 0.65rem;
+            right: 0.65rem;
+            top: 0.5rem;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(58, 160, 255, 0.65), transparent);
+        }
+
+        .control-section h3 {
+            margin: 0 0 0.6rem 0;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #b8d8ff;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            text-shadow: 0 0 9px rgba(58, 160, 255, 0.18);
+        }
+
+        .top-controls-panel > .section-header h3 {
+            margin: 0 0 0.6rem 0;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #b8d8ff;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            text-shadow: 0 0 9px rgba(58, 160, 255, 0.18);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .section-header h3 {
+            margin: 0;
+        }
+
+        .section-collapse-btn {
+            margin-left: auto;
+            padding: 0.2rem 0.45rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            background: linear-gradient(180deg, #1f3042, #182637);
+            border: 1px solid #3f5b78;
+            border-radius: 6px;
+            color: #cfe6ff;
+            white-space: nowrap;
+        }
+
+        .section-collapse-btn:hover {
+            background: linear-gradient(180deg, #2a3f55, #1f3347);
+            border-color: #5a7a9a;
+        }
+
+        .control-section.is-collapsed > *:not(.section-header),
+        .top-controls-panel.is-collapsed > *:not(.section-header) {
+            display: none !important;
+        }
+
+        .section-lock-btn {
+            margin-top: 0;
+            margin-left: 0.1rem;
+            white-space: nowrap;
+        }
+
+        .section-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 0.7rem;
+        }
+
+        .envelope-groups {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.7rem;
+        }
+
+        .envelope-subgroup {
+            border: 1px solid #2f4a67;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #1d2d40 0%, #162433 100%);
+            padding: 0.55rem;
+        }
+
+        .envelope-subgroup h4 {
+            margin: 0 0 0.45rem 0;
+            font-size: 0.76rem;
+            color: #9fc7ef;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .envelope-subgroup .section-controls {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.55rem;
+        }
+
+        .control-section.lfo1 .section-controls,
+        .control-section.lfo2 .section-controls {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .control-section.lfo1 .section-controls .lfo-waveform-control,
+        .control-section.lfo2 .section-controls .lfo-waveform-control {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .control-section.lfo1 .section-controls .lfo-rate-control,
+        .control-section.lfo2 .section-controls .lfo-rate-control {
+            grid-column: 1;
+            grid-row: 2;
+            padding: 0.55rem 0.4rem;
+        }
+
+        .control-section.lfo1 .section-controls .lfo-amount-control,
+        .control-section.lfo2 .section-controls .lfo-amount-control {
+            grid-column: 2;
+            grid-row: 2;
+            padding: 0.55rem 0.4rem;
+        }
+
+        .control-section.lfo1 .section-controls .lfo-wave-preview,
+        .control-section.lfo2 .section-controls .lfo-wave-preview {
+            grid-column: 2;
+            grid-row: 1;
+            border: 1px solid #2f4a67;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #213246 0%, #162433 100%);
+            min-height: 114px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 0.45rem;
+            position: relative;
+        }
+
+        .lfo-wave-preview-label {
+            font-size: 0.66rem;
+            letter-spacing: 0.08em;
+            color: #9ec8f3;
+            text-transform: uppercase;
+            margin-bottom: 0.25rem;
+        }
+
+        .lfo-wave-preview svg {
+            width: 100%;
+            height: 64px;
+        }
+
+        .lfo-wave-preview path {
+            stroke: #5bb3ff;
+            stroke-width: 2.4;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 0 4px rgba(91, 179, 255, 0.55));
+        }
+
+        .control-section.lfo1 .section-controls .lfo-rate-control label,
+        .control-section.lfo1 .section-controls .lfo-amount-control label,
+        .control-section.lfo2 .section-controls .lfo-rate-control label,
+        .control-section.lfo2 .section-controls .lfo-amount-control label {
+            font-size: 0.78rem;
+            min-height: 1.7rem;
+        }
+
+        .control-section.fx .section-controls {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .control-section.fx .section-controls .fx-type-control {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        .control-section.fx .section-controls .fx-engine-description {
+            grid-column: 2;
+            grid-row: 1;
+            border: 1px solid #2f4a67;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #213246 0%, #162433 100%);
+            min-height: 114px;
+            padding: 0.6rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.35rem;
+        }
+
+        .control-section.fx .section-controls .fx-engine-description .fx-engine-title {
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            color: #9ec8f3;
+            text-transform: uppercase;
+        }
+
+        .control-section.fx .section-controls .fx-engine-description .fx-engine-text {
+            font-size: 1.0rem;
+            line-height: 1.35;
+            text-align: center;
+            color: #d2e8ff;
+            text-transform: uppercase;
+        }
+
+        .control-section.fx .section-controls .fx-rate-control {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .control-section.fx .section-controls .fx-depth-control {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .control-section .section-note {
+            margin: -0.2rem 0 0.65rem 0;
+            font-size: 0.74rem;
+            color: #7fa5cc;
+            font-weight: 600;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+        }
+
+        .control-section.envelope { grid-area: envelope; }
+        .control-section.general { grid-area: general; }
+        .control-section.lfo1 { grid-area: lfo1; }
+        .control-section.lfo2 { grid-area: lfo2; }
+        .control-section.osc { grid-area: osc; }
+        .control-section.filter { grid-area: filter; }
+        .control-section.fx { grid-area: chorus; }
+
+        .slider-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 0.35rem;
+            padding: 0.75rem 0.5rem;
+            border: 1px solid #2f4a67;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #213246 0%, #162433 100%);
+            position: relative;
+        }
+
+        .slider-wrapper::after {
+            content: "";
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            bottom: 8px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(58, 160, 255, 0.4), transparent);
+        }
+
+        .slider-wrapper.freq-mini {
+            padding: 0.45rem 0.35rem;
+            gap: 0.2rem;
+        }
+
+        .slider-wrapper.freq-mini label {
+            font-size: 0.7rem;
+            min-height: 1.4rem;
+        }
+
+        .slider-wrapper label {
+            font-size: 0.84rem;
+            min-height: 2.2rem;
+            letter-spacing: 0.03em;
+            color: #d7e6f7;
+            text-transform: uppercase;
+        }
+
+        input[type=range] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 5px;
+            background: linear-gradient(90deg, #1f334a, #3f6f9f, #1f334a);
+            border-radius: 999px;
+            border: 1px solid #2e4b68;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-top: -5px;
+            background: #8cc7ff;
+            border: 1px solid #edf6ff;
+            box-shadow: 0 0 0 3px rgba(58, 160, 255, 0.2);
+        }
+
+        .keyboard-label {
+            margin: 0 0 0.45rem 0;
+            color: #b8d8ff;
+            font-size: 0.85rem;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .keyboard {
+            position: relative;
+            width: 100%;
+            height: 176px;
+            padding: 0.35rem 0.2rem 0.2rem 0.2rem;
+            border: 1px solid #355274;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(23, 36, 51, 0.95), rgba(13, 21, 31, 0.94));
+            box-shadow: inset 0 0 0 1px rgba(58, 160, 255, 0.07);
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .keyboard-inner {
+            position: relative;
+            width: 100%;
+            height: 146px;
+        }
+
+        .white-key,
+        .black-key {
+            position: absolute;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            user-select: none;
+            cursor: pointer;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            box-sizing: border-box;
+        }
+
+        .white-key {
+            width: calc(100% / 15);
+            height: 146px;
+            bottom: 0;
+            border: 1px solid #0f1725;
+            border-radius: 0 0 7px 7px;
+            background: linear-gradient(180deg, #f7f8fb, #cfd5df);
+            color: #1a2535;
+            padding-bottom: 0.35rem;
+            box-shadow: inset 0 -14px 18px rgba(0, 0, 0, 0.16);
+        }
+
+        .black-key {
+            width: calc((100% / 15) * 0.62);
+            height: 88px;
+            top: 0;
+            border: 1px solid #0c121d;
+            border-radius: 0 0 6px 6px;
+            background: linear-gradient(180deg, #101826, #050a12);
+            color: #e7f2ff;
+            z-index: 3;
+            padding-bottom: 0.25rem;
+            box-shadow: inset 0 -10px 16px rgba(255, 255, 255, 0.05), 0 0 0 1px rgba(58, 160, 255, 0.04);
+        }
+
+        .white-key:active,
+        .black-key:active {
+            transform: translateY(1px);
+        }
+
+        .white-key.active {
+            background: linear-gradient(180deg, #d7edff, #9ec8f3);
+            border-color: #69b4ff;
+        }
+
+        .black-key.active {
+            background: linear-gradient(180deg, #284565, #162233);
+            border-color: #69b4ff;
+        }
+
+        .white-key span,
+        .black-key span {
+            font-size: 0.72rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .performance-zone {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.8rem;
+            align-items: start;
+            margin-top: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .performance-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.6rem;
+            margin-bottom: 0.7rem;
+        }
+
+        .performance-header h3 {
+            margin: 0;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #b8d8ff;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            text-shadow: 0 0 9px rgba(58, 160, 255, 0.18);
+        }
+
+        .performance-title-row {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            min-width: 0;
+        }
+
+        .performance-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            min-width: 0;
+        }
+
+        .performance-panel-box.is-collapsed .performance-zone {
+            display: none;
+        }
+
+        .status.inline-status {
+            margin: 0;
+            min-height: auto;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .sequence-panel {
+            border: 1px solid #355274;
+            border-radius: 12px;
+            background: linear-gradient(180deg, rgba(23, 36, 51, 0.95), rgba(13, 21, 31, 0.94));
+            padding: 0.85rem;
+            box-shadow: inset 0 0 0 1px rgba(58, 160, 255, 0.07);
+        }
+
+        .sequence-panel h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #b8d8ff;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+        }
+
+        .sequence-panel .section-note {
+            margin: 0 0 0.7rem 0;
+            font-size: 0.74rem;
+            color: #7fa5cc;
+            font-weight: 600;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+        }
+
+        .sequence-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.7rem;
+        }
+
+        .sequence-grid-wide {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.7rem;
+            margin-top: 0.7rem;
+        }
+
+        .sequence-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .sequence-field label {
+            font-size: 0.72rem;
+            color: #d7e6f7;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .tempo-bpm {
+            color: #8cc7ff;
+            font-weight: 700;
+            margin-left: 0.35rem;
+        }
+
+        .sequence-field select,
+        .sequence-field input {
+            width: 100%;
+        }
+
+        .sequence-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.5rem;
+            margin-top: 0.8rem;
+        }
+
+        .sequence-actions #generate-sequence-btn {
+            grid-column: 1 / -1;
+        }
+
+        .sequence-actions #play-sequence-btn,
+        .sequence-actions #stop-sequence-btn {
+            width: 100%;
+        }
+
+        .sequence-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin-top: 0.65rem;
+            color: #d7e6f7;
+            font-size: 0.8rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .sequence-toggle input {
+            accent-color: var(--accent);
+        }
+
+        .sequence-clock-mode-select {
+            min-width: 152px;
+            text-transform: uppercase;
+            transition: box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+        }
+
+        .sequence-clock-mode-select.clock-signal-blink {
+            border-color: #8cc7ff;
+            box-shadow: 0 0 0 1px rgba(140, 199, 255, 0.45), 0 0 12px rgba(58, 160, 255, 0.35);
+            background: linear-gradient(180deg, #2b4663 0%, #20344a 100%);
+        }
+
+        .sequence-toggle-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.85rem;
+            align-items: center;
+            margin-top: 0.65rem;
+        }
+
+        .sequence-tempo-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+        }
+
+        .sequence-tempo-toggle input[type=range] {
+            width: 148px;
+        }
+
+        .sequence-tempo-toggle.is-hidden {
+            display: none;
+        }
+
+        .sequence-display {
+            margin-top: 0.8rem;
+            padding: 0.65rem;
+            border: 1px solid #2f4a67;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #213246 0%, #162433 100%);
+            color: #d2e8ff;
+            min-height: 72px;
+            font-size: 0.85rem;
+            line-height: 1.35;
+            word-break: break-word;
+        }
+
+        .sequence-display.sequence-display-header {
+            margin-top: 0;
+            min-height: auto;
+            padding: 0.35rem 0.55rem;
+            font-size: 0.78rem;
+            line-height: 1.2;
+            max-width: min(52vw, 520px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sequence-display strong {
+            color: #8cc7ff;
+        }
+
+        .sequence-display-collapsed {
+            display: none;
+            margin: 0;
+            min-height: auto;
+            padding: 0.35rem 0.55rem;
+            font-size: 0.78rem;
+            line-height: 1.2;
+            max-width: min(58vw, 560px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .performance-panel-box.is-collapsed .sequence-display-collapsed.is-visible {
+            display: block;
+        }
+
+        .value-display {
+            font-weight: 600;
+            color: #bfe0ff;
+            min-height: 1.3rem;
+        }
+
+        .lock-btn {
+            margin-top: 0.2rem;
+            padding: 0.2rem 0.45rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            background: linear-gradient(180deg, #1f3042, #182637);
+            border: 1px solid #3f5b78;
+            border-radius: 6px;
+            color: #cfe6ff;
+        }
+
+        .lock-btn.locked {
+            background: linear-gradient(180deg, #3c1f30, #2d1623);
+            border-color: #8d4f6b;
+            color: #ffd3de;
+        }
+
+        .lock-actions {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .lock-actions button {
+            padding: 0.4rem 0.8rem;
+            cursor: pointer;
+            background: linear-gradient(180deg, #203246, #162434);
+            border: 1px solid #3d5978;
+            border-radius: 8px;
+            color: #d4e7fc;
+        }
+
+        .lock-actions button.lock-all {
+            background: linear-gradient(180deg, #3f2234, #2a1523);
+            border-color: #86536c;
+        }
+
+        .lock-actions button.unlock-all {
+            background: linear-gradient(180deg, #1f3a2b, #15261d);
+            border-color: #456f56;
+        }
+
+        .preset-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.75rem;
+            margin: 0.75rem 0;
+            justify-content: center;
+            width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        #randomize-btn {
+            flex: 0 0 auto;
+            min-width: 200px;
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #fff;
+            border: none;
+        }
+
+        .preset-name {
+            font-weight: bold;
+            font-size: 1.2em;
+            padding: 0.4rem 0.75rem;
+            background: linear-gradient(180deg, #1f3043, #172536);
+            border-radius: 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 260px;
+            border: 1px solid #456180;
+            color: #d2e8ff;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                width: min(100% - 1rem, 800px);
+                margin-top: 0.8rem;
+            }
+
+            h1 {
+                font-size: 1.3rem;
+            }
+
+            .key {
+                width: 36px;
+                height: 104px;
+            }
+
+            .panel-layout,
+            .control-section,
+            .control-section.envelope,
+            .control-section.filter,
+            .control-section.lfo1,
+            .control-section.lfo2,
+            .control-section.osc,
+            .control-section.fx {
+                grid-area: auto;
+            }
+
+            .panel-layout {
+                grid-template-columns: 1fr;
+                grid-template-areas: none;
+            }
+
+            .envelope-groups {
+                grid-template-columns: 1fr;
+            }
+
+            .workspace-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .top-row {
+                grid-template-columns: 1fr;
+            }
+
+            .top-controls-stack {
+                grid-template-columns: 1fr;
+            }
+
+            .performance-zone {
+                grid-template-columns: 1fr;
+            }
+
+            .performance-header {
+                align-items: flex-start;
+            }
+
+            .performance-header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .sequence-display.sequence-display-header {
+                max-width: 100%;
+                flex: 1;
+            }
+
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <main class="panel">
+            <h1>Behringer ProVS Mini MIDI Control</h1>
+            <p class="subtitle">Real-time control, randomizer, and local presets for your ProVS Mini.</p>
+
+            <div class="top-row">
+                <section class="performance-panel-box is-collapsed" id="performance-panel" aria-label="MIDI performance">
+                    <div class="performance-header">
+                        <div class="performance-title-row">
+                            <h3>MIDI performance</h3>
+                        </div>
+                        <div class="performance-header-actions">
+                            <div id="sequence-display" class="sequence-display sequence-display-header" aria-live="polite">No sequence generated yet.</div>
+                            <button id="performance-toggle-btn" type="button" aria-controls="performance-zone" aria-expanded="false">Show</button>
+                        </div>
+                    </div>
+
+                    <div class="performance-zone" id="performance-zone">
+                        <aside class="sequence-panel" aria-label="MIDI sequence generator">
+                        <h3>Midi Sequence</h3>
+                        <p class="section-note">Generate and trigger a phrase to the synthesizer.</p>
+
+                        <div class="sequence-grid">
+                            <div class="sequence-field">
+                                <label for="sequence-length">Steps</label>
+                                <select id="sequence-length">
+                                    <option value="4">4</option>
+                                    <option value="8" >8</option>
+                                    <option value="12">12</option>
+                                    <option value="16" selected>16</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="sequence-grid-wide">
+                            <div class="sequence-field">
+                                <label for="sequence-root">Root</label>
+                                <select id="sequence-root">
+                                    <option value="60" selected>C</option>
+                                    <option value="61" >C#</option>
+                                    <option value="62">D</option>
+                                    <option value="63">D#</option>
+                                    <option value="64">E</option>
+                                    <option value="65">F</option>
+                                    <option value="66">F#</option>
+                                    <option value="67">G</option>
+                                    <option value="68">G#</option>
+                                    <option value="69">A</option>
+                                    <option value="70">A#</option>
+                                    <option value="71">B</option>
+                                </select>
+                            </div>
+                            <div class="sequence-field">
+                                <label for="sequence-scale">Scale</label>
+                                <select id="sequence-scale">
+                                    <option value="major">Major</option>
+                                    <option value="minor" selected>Minor</option>
+                                    <option value="pentatonic">Pentatonic</option>
+                                    <option value="dorian">Dorian</option>
+                                </select>
+                            </div>
+                            <div class="sequence-field">
+                                <label for="sequence-density">Density</label>
+                                <input id="sequence-density" type="range" min="1" max="8" value="4">
+                            </div>
+                            <div class="sequence-field">
+                                <label for="sequence-swing">Swing</label>
+                                <input id="sequence-swing" type="range" min="0" max="50" value="45">
+                            </div>
+                        </div>
+
+                        <div class="sequence-toggle-row">
+                            <label class="sequence-toggle">
+                                <input id="sequence-loop" type="checkbox" checked>
+                                Continuous loop
+                            </label>
+                            <label class="sequence-toggle">
+                                Clock mode
+                                <select id="sequence-clock-mode" class="sequence-clock-mode-select" aria-label="Select clock mode">
+                                    <option value="off" selected>Clock off</option>
+                                    <option value="in">Clock in</option>
+                                    <option value="out">Clock out</option>
+                                </select>
+                            </label>
+                            <label id="sequence-tempo-toggle" class="sequence-toggle sequence-tempo-toggle" for="sequence-tempo">
+                                Tempo <span id="tempo-bpm" class="tempo-bpm">120 BPM</span>
+                                <input id="sequence-tempo" type="range" min="60" max="180" value="120">
+                            </label>
+                        </div>
+
+                        <div class="sequence-actions">
+                            <button id="generate-sequence-btn">Generate Sequence</button>
+                            <button id="play-sequence-btn">Play</button>
+                            <button id="stop-sequence-btn">Stop</button>
+                        </div>
+                        </aside>
+
+                        <div>
+                            <div class="keyboard-label">Keyboard</div>
+                            <div class="keyboard" id="keyboard"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div class="workspace-layout">
+                <section class="controls-panel-box" aria-label="MIDI controls">
+                    <div class="subtitle"></div>
+                    <div class="top-controls-panel" data-collapse-key="top-controls">
+                        <div class="section-header">
+                            <h3>Global MIDI &amp; Presets</h3>
+                        </div>
+
+                        <div class="top-controls-stack">
+                            <div class="top-controls-group" aria-label="MIDI configuration">
+                                <h3>Midi Configuration</h3>
+                                <div class="midi-row">
+                                    <label for="midi-output">MIDI device:</label>
+                                    <select id="midi-output" aria-label="Select MIDI output"></select>
+                                    <label for="midi-channel">Channel:</label>
+                                    <select id="midi-channel" aria-label="Select MIDI channel">
+                                        <option value="1" selected>1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                        <option value="5">5</option>
+                                        <option value="6">6</option>
+                                        <option value="7">7</option>
+                                        <option value="8">8</option>
+                                        <option value="9">9</option>
+                                        <option value="10">10</option>
+                                        <option value="11">11</option>
+                                        <option value="12">12</option>
+                                        <option value="13">13</option>
+                                        <option value="14">14</option>
+                                        <option value="15">15</option>
+                                        <option value="16">16</option>
+                                    </select>
+                                    <div id="status" class="status inline-status" aria-live="polite"></div>
+                                </div>
+                            </div>
+
+                            <div class="top-controls-group" aria-label="Presets">
+                                <h3>Local presets</h3>
+                                <div class="preset-actions">
+                                    <button id="save-preset-btn">💾 Save Preset</button>
+                                    <button id="load-preset-btn">📂 Load Preset</button>
+                                    <input type="file" id="preset-file" accept=".json" style="display: none;">
+                                    <div class="preset-name" id="preset-name" aria-live="polite"></div>
+                                </div>
+
+                                <div class="preset-container">
+                                    <button id="randomize-btn">Generate random midi values</button>
+                                </div>
+
+                                <div class="lock-actions">
+                                    <button id="lock-all-btn" class="lock-all">🔒 Lock All</button>
+                                    <button id="unlock-all-btn" class="unlock-all">🔓 Unlock All</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-layout" id="controls"></div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            if (!navigator.requestMIDIAccess) {
+                alert("WebMIDI is not supported in this browser. Please use Chrome or Edge.");
+                return;
+            }
+
+            const statusEl = document.getElementById("status");
+            const performancePanel = document.getElementById("performance-panel");
+            const performanceZone = document.getElementById("performance-zone");
+            const performanceToggleBtn = document.getElementById("performance-toggle-btn");
+            let generatedSequence = [];
+            let sequenceArmed = false;
+            let sequenceTimer = null;
+            let sequenceClockTimer = null;
+            let sequenceAudioCtx = null;
+            let nextClockTickTime = 0;
+            let activeSequenceNote = null;
+            let sequenceIsPlaying = false;
+            let sequenceStepIndex = 0;
+            let externalClockTickCount = 0;
+            const midiClockTicksPerStep = 12;
+            let clockSignalBlinkTimer = null;
+
+            function syncCollapsedSequenceDisplay() {
+                // Sequence display now lives in the header and is always visible.
+            }
+
+            function setupSectionCollapse(section) {
+                const sectionClass = section.dataset.collapseKey || Array.from(section.classList).find(c => 
+                    ['general', 'osc', 'envelope', 'lfo1', 'lfo2', 'filter', 'fx'].includes(c)
+                );
+                if (!sectionClass) return;
+
+                const header = section.querySelector('.section-header');
+                if (!header) return;
+
+                const collapseBtn = document.createElement('button');
+                collapseBtn.classList.add('section-collapse-btn');
+                collapseBtn.type = 'button';
+                collapseBtn.textContent = 'Hide';
+                collapseBtn.setAttribute('aria-expanded', 'true');
+
+                collapseBtn.addEventListener('click', () => {
+                    section.classList.toggle('is-collapsed');
+                    const isCollapsed = section.classList.contains('is-collapsed');
+                    collapseBtn.textContent = isCollapsed ? 'Show' : 'Hide';
+                    collapseBtn.setAttribute('aria-expanded', String(!isCollapsed));
+                });
+
+                header.appendChild(collapseBtn);
+            }
+
+            function updatePerformanceToggle() {
+                const isCollapsed = performancePanel.classList.contains("is-collapsed");
+                performanceToggleBtn.textContent = isCollapsed ? "Show" : "Hide";
+                performanceToggleBtn.setAttribute("aria-expanded", String(!isCollapsed));
+                syncCollapsedSequenceDisplay();
+            }
+
+            performanceToggleBtn.addEventListener("click", () => {
+                performancePanel.classList.toggle("is-collapsed");
+                updatePerformanceToggle();
+            });
+
+            updatePerformanceToggle();
+
+            function setStatus(message, tone = "") {
+                statusEl.textContent = message;
+                statusEl.className = `status${tone ? ` ${tone}` : ""}`;
+            }
+
+            function describeMidiMessage(type, status) {
+                if (status === 250 || status === 0xFA) return "Start";
+                if (status === 252 || status === 0xFC) return "Stop";
+                if (status === 248 || status === 0xF8) return "Clock";
+                if (status === 254 || status === 0xFE) return "Active Sensing";
+                return type;
+            }
+
+            function logSentMessage(type, status, data1, data2, controlName = null, channel = null) {
+                const timestamp = new Date().toLocaleTimeString();
+                const resolvedType = describeMidiMessage(type, status);
+                const resolvedChannel = channel ?? (status < 0xF0 ? (status & 0x0F) + 1 : "SYS");
+                let message = `[${timestamp}] [SEND] [Channel: ${resolvedChannel}] ${resolvedType}: status=${status}, data1=${data1}`;
+                if (data2 !== undefined) message += `, Value: ${data2}`;
+                if (controlName) message += ` (${controlName})`;
+                console.log(message);
+            }
+
+            function logReceivedMessage(type, status, data1, data2, controlName = null, channel = null) {
+                const timestamp = new Date().toLocaleTimeString();
+                const resolvedType = describeMidiMessage(type, status);
+                const resolvedChannel = channel ?? (status < 0xF0 ? (status & 0x0F) + 1 : "SYS");
+                let message = `[${timestamp}] [RECV] [Channel: ${resolvedChannel}] ${resolvedType}: status=${status}, data1=${data1}`;
+                if (data2 !== undefined) message += `, Value: ${data2}`;
+                if (controlName) message += ` (${controlName})`;
+                console.log(message);
+            }
+
+            // Maps a displayed value (0-max) to MIDI value (0-127)
+            function toMidiValue(displayValue, max) {
+                return Math.round((displayValue / max) * 127);
+            }
+
+            // Maps a MIDI value (0-127) to displayed value (0-max)
+            function toDisplayValue(midiValue, max) {
+                return Math.round((midiValue / 127) * max);
+            }
+
+            const midi = await navigator.requestMIDIAccess();
+            const outputSelect = document.getElementById("midi-output");
+            const channelSelect = document.getElementById("midi-channel");
+            const inputs = Array.from(midi.inputs.values());
+            const outputs = Array.from(midi.outputs.values());
+
+            if (outputs.length === 0) {
+                setStatus("No MIDI outputs detected.", "error");
+                alert("No MIDI output devices detected.");
+                return;
+            }
+
+            outputs.forEach((output, index) => {
+                const option = document.createElement("option");
+                option.value = index;
+                option.textContent = output.name;
+                outputSelect.appendChild(option);
+            });
+
+            let midiOutput = outputs[0];
+            let midiChannel = parseInt(channelSelect.value, 10);
+            setStatus(`Active MIDI output: ${midiOutput.name}`, "ok");
+            outputSelect.addEventListener("change", (event) => {
+                midiOutput = outputs[event.target.value];
+                console.log(`Changed output device to: ${midiOutput.name}`);
+                setStatus(`Active MIDI output: ${midiOutput.name}`, "ok");
+            });
+            channelSelect.addEventListener("change", (event) => {
+                midiChannel = Math.min(16, Math.max(1, parseInt(event.target.value, 10) || 1));
+                console.log(`Changed MIDI channel to: ${midiChannel}`);
+            });
+
+            function channelStatus(baseStatus) {
+                return baseStatus + (midiChannel - 1);
+            }
+
+            function sendCC(controller, displayValue, max) {
+                if (!midiOutput) return;
+                const midiValue = toMidiValue(displayValue, max);
+                const status = channelStatus(0xB0);
+                const message = [status, controller, midiValue];
+                midiOutput.send(message);
+                const controlName = getCCName(controller);
+                logSentMessage("CC", status, controller, midiValue, controlName);
+            }
+
+            function sendNoteOn(note, velocity) {
+                if (!midiOutput) return;
+                const status = channelStatus(144);
+                const message = [status, note, velocity];
+                midiOutput.send(message);
+                logSentMessage("Note On", status, note, velocity);
+            }
+
+            function sendNoteOff(note) {
+                if (!midiOutput) return;
+                const status = channelStatus(128);
+                const message = [status, note, 0];
+                midiOutput.send(message);
+                logSentMessage("Note Off", status, note, 0);
+            }
+
+            function getCCName(controller) {
+                const control = controls.find(c => c.cc === controller);
+                return control ? control.name : null;
+            }
+
+            // Waveform names for Voice A/B/C/D Wave
+            const waveNames = {
+                0: "Twang",
+                1: "Clav",
+                2: "Xylophone",
+                3: "Slippery Slope",
+                4: "Enharmonic Square",
+                5: "Xylophone 2",
+                6: "Mellow Square",
+                7: "Chaos 1",
+                8: "Chaos 2",
+                9: "Chaos 3",
+                10: "Chaos 4",
+                11: "Bright Square",
+                12: "Hollow",
+                13: "BP Square",
+                14: "Ski Slope 1",
+                15: "Rasp",
+                16: "Peal",
+                17: "Fuzz",
+                18: "Floss",
+                19: "Excite",
+                20: "Awaken",
+                21: "Energize",
+                22: "BP Twang",
+                23: "Complex Pulse",
+                24: "Mellow Square 2",
+                25: "Harmonic Square",
+                26: "Thin Ramp",
+                27: "Xylophone 3",
+                28: "Thin Square",
+                29: "Harmonic Ramp",
+                30: "Rouse",
+                31: "Waken",
+                32: "Sine",
+                33: "Sawtooth",
+                34: "Square",
+                35: "Dome 1",
+                36: "Dome 2",
+                37: "Mellow Dome",
+                38: "Dome 3",
+                39: "Dome 4",
+                40: "Rasp 1",
+                41: "Rasp 2",
+                42: "Rasp 3",
+                43: "Rasp 4",
+                44: "Dome 5",
+                45: "HP Saw",
+                46: "High BP Saw",
+                47: "High BP Square",
+                48: "Vocal",
+                49: "Squeeze box",
+                50: "Pulse",
+                51: "Limp Saw",
+                52: "Spark Wave 1",
+                53: "Spark Wave 2",
+                54: "Spark Wave 3",
+                55: "Mid Wave 1",
+                56: "Cacophnous Buzz 1",
+                57: "Mid Buzz 1",
+                58: "Dome 6",
+                59: "Soft Dome 3",
+                60: "Dome 7",
+                61: "Spark Wave 4",
+                62: "Spark Wave 5",
+                63: "Soft Dome 4",
+                64: "Dome 8",
+                65: "Organ",
+                66: "Spark Wave 5",
+                67: "Soft Wave 1",
+                68: "Soft Wave 2",
+                69: "Spark Wave 7",
+                70: "Reed",
+                71: "Soft Wave 3",
+                72: "Soft Wave 4",
+                73: "Saxophone",
+                74: "Soft Wave 5",
+                75: "Trashy Wave 1",
+                76: "Trashy Wave 2",
+                77: "Trashy Wave 3",
+                78: "Trashy Wave 4",
+                79: "Trashy Wave 5",
+                80: "Trashy Wave 6",
+                81: "Jaw Harp 1",
+                82: "Jaw Harp 2",
+                83: "Soft Wave 6",
+                84: "Thin 1",
+                85: "Thin 2",
+                86: "Spark Wave 8",
+                87: "Spark Wave 9",
+                88: "Spark Wave 10",
+                89: "Soft Dome 5",
+                90: "Soft Dome 6",
+                91: "Cacophonous Buzz 2",
+                92: "Thin 3",
+                93: "Spark Wave 11",
+                94: "Soft Dome 7",
+                95: "Soft Wave 7",
+                96: "Sine 2",
+                97: "Sync'd Sine",
+                98: "Trashy Wave 7",
+                99: "Twingle Pad",
+                100: "Dome 9",
+                101: "Thin 4",
+                102: "Thin 5",
+                103: "Trashy Wave 8",
+                104: "Trashy Wave 9",
+                105: "Trashy Wave 10",
+                106: "Trashy Wave 11",
+                107: "Trashy Wave 12",
+                108: "Trashy Wave 13",
+                109: "Spark Wave 12",
+                110: "Spark Wave 13",
+                111: "Trashy Wave 14",
+                112: "Trashy Wave 15",
+                113: "Rainbow",
+                114: "Soft Dome 8",
+                115: "Trashy Wave 15",
+                116: "Soothing 1",
+                117: "Soothing 2",
+                118: "Space Wave",
+                119: "5th Rasp",
+                120: "Octave Wave",
+                121: "Triangle + Overtones",
+                122: "Pulse + Overtones",
+                123: "Rising Square",
+                124: "Soft Wave 8",
+                125: "Cacophonous Buzz 3",
+                126: "Silence",
+                127: "White Noise"
+            };
+
+            // LFO Waveform names
+            const lfoNames = {
+                0: "Triangle",
+                1: "Square",
+                2: "Sawtooth",
+                3: "Ramp",
+                4: "S&H"
+            };
+            // FX Engine names
+            const fxeNames = {
+                0: "Chorus",
+                1: "Reverb",
+                2: "Ensemble"
+            };
+            const fxeDescriptions = {
+                0: "Original chorus engine",
+                1: "New engine for creating immersive spatial effects",
+                2: "New engine with enhanced depth and dimension"
+            };
+
+            const controls = [
+                { cc: 1, name: "Modulation", desc:"Modulation", max: 127, min: 0 },
+                { cc: 5, name: "Portamento", desc:"Portamento time: Smoother transitions between notes", max: 31, min: 0 },
+                { cc: 9, name: "FX Engine", desc:"Chorus, Reverb, Ensemble", max: 2, min: 0, isFXE: true },
+                { cc: 24, name: "Voice A Wave", max: 127, min: 0, isVoiceWave: true },
+                { cc: 25, name: "Voice B Wave", max: 127, min: 0, isVoiceWave: true },
+                { cc: 26, name: "Voice C Wave", max: 127, min: 0, isVoiceWave: true },
+                { cc: 27, name: "Voice D Wave", max: 127, min: 0, isVoiceWave: true },
+                { cc: 28, name: "LFO 2 Amount", max: 99, min: 0 },
+                { cc: 47, name: "Filter Env Amount", desc: "Adjusts the amount of envelope modulation of the filter", max: 99, min: 0 },
+                { cc: 54, name: "LFO 1 Waveform", max: 4, min: 0, isLFO: true },
+                { cc: 55, name: "LFO 2 Waveform", max: 4, min: 0, isLFO: true },
+//                { cc: 56, name: "LFO1 Destination (VCF OSC)", max: 127, min: 0 },
+                { cc: 70, name: "LFO 1 Amount", max: 99, min: 0 },
+                { cc: 71, name: "Filter Resonance", max: 99, min: 0 },
+                { cc: 72, name: "LFO 1 Rate", max: 99, min: 0 },
+                { cc: 73, name: "LFO 2 Rate", max: 99, min: 0 },
+                { cc: 74, name: "Filter Cutoff", max: 99, min: 0 },
+                { cc: 81, name: "Amp Env Attack", max: 99, min: 0 },
+                { cc: 82, name: "Amp Env Decay", max: 99, min: 0 },
+                { cc: 83, name: "Amp Env Sustain", max: 99, min: 0 },
+                { cc: 84, name: "Amp Env Release", max: 99, min: 0 },
+                { cc: 85, name: "Filter Env Attack", max: 99, min: 0 },
+                { cc: 86, name: "Filter Env Decay", max: 99, min: 0 },
+                { cc: 87, name: "Filter Env Sustain", max: 99, min: 0 },
+                { cc: 88, name: "Filter Env Release", max: 99, min: 0 },
+                { cc: 91, name: "FX Depth", max: 99, min: 0 },
+                { cc: 92, name: "FX Rate", max: 99, min: 0 },
+                { cc: 111, name: "Voice A Fine Tuning", max: 99, min: 0 },
+                { cc: 112, name: "Voice B Fine Tuning", max: 99, min: 0 },
+                { cc: 113, name: "Voice C Fine Tuning", max: 99, min: 0 },
+                { cc: 114, name: "Voice D Fine Tuning", max: 99, min: 0 },
+                { cc: 115, name: "Voice A Freq", max: 24, min: 0 },
+                { cc: 116, name: "Voice B Freq", max: 24, min: 0 },
+                { cc: 117, name: "Voice C Freq", max: 24, min: 0 },
+                { cc: 118, name: "Voice D Freq", max: 24, min: 0 } 
+            ];
+
+            const controlSections = [
+                {
+                    title: "General",
+                    sectionClass: "general",
+                    note: "Mod / Portamento",
+                    ccs: [1, 5]
+                },
+                {
+                    title: "Envelope",
+                    sectionClass: "envelope",
+                    note: "A D S R",
+                    ccs: [85, 86, 87, 88, 81, 82, 83, 84]
+                },
+                {
+                    title: "LFO 1",
+                    sectionClass: "lfo1",
+                    note: "Waveform / Rate / Amount",
+                    ccs: [54, 72, 70]
+                },
+                {
+                    title: "LFO 2",
+                    sectionClass: "lfo2",
+                    note: "Waveform / Rate / Amount",
+                    ccs: [55, 73, 28]
+                },
+                {
+                    title: "Analog Filter",
+                    sectionClass: "filter",
+                    note: "Cutoff / Reso",
+                    ccs: [74, 71, 47, 56]
+                },
+                {
+                    title: "FX Engine",
+                    sectionClass: "fx",
+                    note: "Type / Rate / Depth",
+                    ccs: [9, 92, 91]
+                }
+            ];
+
+            // Character set for name generation (only capital letters and space)
+            const nameChars = "_ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+            // Keep preset-name hashing tied to the actual control definitions.
+            const presetNameControlOrder = controls.map(({ cc }) => cc);
+
+            // Generate an 8-character name based on all control values
+            function generatePresetName() {
+                // Create a hash from all control values
+                let hash = 0;
+                presetNameControlOrder.forEach((cc) => {
+                    const slider = document.querySelector(`[data-cc="${cc}"]`);
+                    const value = slider ? parseInt(slider.value) : 0;
+                    hash = (hash << 5) - hash + value;
+                    hash |= 0; // Convert to 32bit integer
+                });
+
+                // Convert hash to a consistent 8-character name
+                let name = '';
+                for (let i = 0; i < 8; i++) {
+                    // Use absolute value and modulo to get a consistent index
+                    const charIndex = Math.abs(hash + i * 2654435761) % nameChars.length;
+                    name += nameChars[charIndex];
+                }
+
+                return name;
+            }
+
+            // Update the preset name display
+            function updatePresetName() {
+                const name = generatePresetName();
+                document.getElementById('preset-name').textContent = `Preset: ${name}`;
+                console.log(`Generated preset name: ${name}`);
+            }
+
+            function refreshPresetName() {
+                requestAnimationFrame(() => {
+                    updatePresetName();
+                });
+            }
+	
+            function saveCurrentPreset() {
+                const preset = {
+                    name: document.getElementById('preset-name').textContent,
+                    controls: [],
+                    values: {},
+                    timestamp: new Date().toISOString()
+                };
+
+                controls.forEach(({ cc, name }) => {
+                    const slider = document.querySelector(`[data-cc="${cc}"]`);
+                    const value = parseInt(slider.value, 10);
+
+                    preset.values[cc] = value;
+                    // Add to controls array (human-readable)
+                    preset.controls.push({
+                       cc: cc,
+                       name: name,
+                       value: value,
+                       min: slider.min,
+                       max: slider.max
+                       });
+                });
+
+                const presetJson = JSON.stringify(preset, null, 2);
+                const blob = new Blob([presetJson], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `CC_${preset.name.replace(/[^a-zA-Z]/g, '_')}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                console.log(`Preset saved: ${preset.name}`);
+            }
+
+            function loadPresetFromFile(file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const preset = JSON.parse(event.target.result);
+                        if (!preset || typeof preset !== "object") {
+                            throw new Error("Invalid preset format");
+                        }
+
+                        const loadedValues = (preset.values && typeof preset.values === "object")
+                            ? preset.values
+                            : Array.isArray(preset.controls)
+                                ? Object.fromEntries(
+                                    preset.controls
+                                        .filter((item) => item && item.cc !== undefined && item.value !== undefined)
+                                        .map((item) => [item.cc, item.value])
+                                )
+                                : null;
+
+                        if (!loadedValues) {
+                            throw new Error("Invalid preset format");
+                        }
+
+                        // Apply the preset values
+                        let appliedCount = 0;
+                        Object.entries(loadedValues).forEach(([ccKey, rawValue]) => {
+                            const cc = parseInt(ccKey, 10);
+                            const control = controlsByCc.get(cc);
+                            if (!control) return;
+
+                            const slider = document.querySelector(`[data-cc="${cc}"]`);
+                            if (!slider) return;
+
+                            let displayValue = Number(rawValue);
+                            if (!Number.isFinite(displayValue)) return;
+
+                            // Backward compatibility: if preset stores raw MIDI (0-127) for lower-range controls.
+                            if (displayValue > control.max && displayValue <= 127 && control.max < 127) {
+                                displayValue = toDisplayValue(displayValue, control.max);
+                            }
+
+                            displayValue = Math.min(control.max, Math.max(control.min, Math.round(displayValue)));
+                            slider.value = String(displayValue);
+
+                            updateControlDisplay(cc, displayValue, control);
+                            sendCC(cc, displayValue, control.max);
+                            appliedCount += 1;
+                        });
+
+                        if (appliedCount === 0) {
+                            throw new Error("No compatible control values found in preset");
+                        }
+
+                        // Update the preset name display
+                        const presetName = preset.name || "Preset loaded";
+                        document.getElementById('preset-name').textContent = presetName;
+                        refreshPresetName();
+                        console.log(`Preset loaded: ${presetName} (${appliedCount} controls)`);
+                    } catch (error) {
+                        console.error("Error loading preset:", error);
+                        alert("Error loading preset file. Please check the file format.");
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // Set up event listeners for the preset-file buttons
+            document.getElementById('save-preset-btn').addEventListener('click', saveCurrentPreset);
+            document.getElementById('load-preset-btn').addEventListener('click', () => {
+                document.getElementById('preset-file').click();
+            });
+            document.getElementById('preset-file').addEventListener('change', (event) => {
+                if (event.target.files.length > 0) {
+                    loadPresetFromFile(event.target.files[0]);
+                    event.target.value = "";
+                }
+            });
+
+            // functions for lock/unlock all
+            function lockAllControls() {
+                controls.forEach(({ cc }) => {
+                    if (!lockedControls.has(cc)) {
+                        setControlLockState(cc, true);
+                    }
+                });
+                refreshSectionLockButtons();
+                console.log("All controls locked");
+            }
+
+            function unlockAllControls() {
+                controls.forEach(({ cc }) => {
+                    if (lockedControls.has(cc)) {
+                        setControlLockState(cc, false);
+                    }
+                });
+                refreshSectionLockButtons();
+                console.log("All controls unlocked");
+            }	
+
+            // Set up event listeners for the new buttons
+            document.getElementById('lock-all-btn').addEventListener('click', lockAllControls);
+            document.getElementById('unlock-all-btn').addEventListener('click', unlockAllControls);
+
+            // Create slider controls
+            const controlsContainer = document.getElementById("controls");
+            const lockedControls = new Set();
+            const sectionLockBindings = [];
+            const controlsByCc = new Map(controls.map((control) => [control.cc, control]));
+
+            function updateControlDisplay(cc, value, control) {
+                const displayEl = document.getElementById(`value-${cc}`);
+                if (!displayEl) return;
+
+                if (control.isVoiceWave) {
+                    displayEl.innerHTML = `${value}<br><small>${waveNames[value] || "Unknown"}</small>`;
+                } else if (control.isLFO) {
+                    displayEl.innerHTML = `${value}<br><small>${lfoNames[value] || "Unknown"}</small>`;
+                    if (cc === 54) {
+                        updateLfoWavePreview(1, value);
+                    }
+                    if (cc === 55) {
+                        updateLfoWavePreview(2, value);
+                    }
+                } else if (control.isFXE) {
+                    displayEl.innerHTML = `${value}<br><small>${fxeNames[value] || "Unknown"}</small>`;
+                    updateFxEngineDescription(value);
+                } else {
+                    displayEl.textContent = value;
+                }
+            }
+
+            function updateFxEngineDescription(engineValue) {
+                const textEl = document.getElementById("fx-engine-description-text");
+                if (!textEl) return;
+                const name = (fxeNames[engineValue] || "Unknown").toUpperCase();
+                const description = fxeDescriptions[engineValue] || "No description available.";
+                //textEl.textContent = `${name}: ${description}`;
+                textEl.textContent = `${description}`;
+            }
+
+            function getControlLockButton(cc) {
+                const slider = document.querySelector(`[data-cc="${cc}"]`);
+                return slider ? slider.parentNode.querySelector(".lock-btn") : null;
+            }
+
+            function setControlLockState(cc, shouldLock) {
+                const lockBtn = getControlLockButton(cc);
+                if (!lockBtn) return;
+
+                if (shouldLock) {
+                    lockBtn.classList.add("locked");
+                    lockBtn.textContent = "🔒 Random locked";
+                    lockedControls.add(cc);
+                } else {
+                    lockBtn.classList.remove("locked");
+                    lockBtn.textContent = "🔓 Unlocked";
+                    lockedControls.delete(cc);
+                }
+            }
+
+            function refreshSectionLockButtons() {
+                sectionLockBindings.forEach(({ ccs, button }) => {
+                    const validCcs = ccs.filter((cc) => controlsByCc.has(cc));
+                    const allLocked = validCcs.length > 0 && validCcs.every((cc) => lockedControls.has(cc));
+                    button.classList.toggle("locked", allLocked);
+                    button.textContent = allLocked ? "🔒 Random locked" : "🔓 Unlocked";
+                });
+            }
+
+            function createSectionHeader(title, ccs) {
+                const header = document.createElement("div");
+                header.classList.add("section-header");
+
+                const heading = document.createElement("h3");
+                heading.textContent = title;
+
+                const sectionLockBtn = document.createElement("button");
+                sectionLockBtn.classList.add("lock-btn", "section-lock-btn");
+                sectionLockBtn.type = "button";
+                sectionLockBtn.textContent = "🔓 Unlocked";
+                sectionLockBtn.addEventListener("click", () => {
+                    const validCcs = ccs.filter((cc) => controlsByCc.has(cc));
+                    const allLocked = validCcs.length > 0 && validCcs.every((cc) => lockedControls.has(cc));
+                    validCcs.forEach((cc) => setControlLockState(cc, !allLocked));
+                    refreshSectionLockButtons();
+                });
+
+                sectionLockBindings.push({ ccs: [...ccs], button: sectionLockBtn });
+
+                header.appendChild(heading);
+                header.appendChild(sectionLockBtn);
+                return header;
+            }
+
+            function createControlElement({ cc, name, desc, max, min, isVoiceWave, isLFO, isFXE }, compact = false) {
+                const wrapper = document.createElement("div");
+                wrapper.classList.add("slider-wrapper");
+                if (compact) {
+                    wrapper.style.padding = "0.55rem 0.45rem";
+                }
+
+                // Create lock button
+                const lockBtn = document.createElement("button");
+                lockBtn.classList.add("lock-btn");
+                lockBtn.textContent = "🔓 Unlocked";
+                lockBtn.addEventListener("click", () => {
+                    const isLocked = lockedControls.has(cc);
+                    setControlLockState(cc, !isLocked);
+                    if (!isLocked) {
+                        console.log(`Locked control: ${name} (CC ${cc})`);
+                    } else {
+                        console.log(`Unlocked control: ${name} (CC ${cc})`);
+                    }
+                    refreshSectionLockButtons();
+                });
+
+                // Create value display with special handling for wave controls
+                let valueDisplay;
+                if (isVoiceWave) {
+                    valueDisplay = document.createElement("div");
+                    valueDisplay.classList.add("value-display");
+                    valueDisplay.id = `value-${cc}`;
+                    valueDisplay.innerHTML = `${min}<br><small>${waveNames[min] || "Unknown"}</small>`;
+                } else if (isLFO) {
+                    valueDisplay = document.createElement("div");
+                    valueDisplay.classList.add("value-display");
+                    valueDisplay.id = `value-${cc}`;
+                    valueDisplay.innerHTML = `${min}<br><small>${lfoNames[min] || "Unknown"}</small>`;
+                } else if (isFXE) {
+                    valueDisplay = document.createElement("div");
+                    valueDisplay.classList.add("value-display");
+                    valueDisplay.id = `value-${cc}`;
+                    valueDisplay.innerHTML = `${min}<br><small>${fxeNames[min] || "Unknown"}</small>`;
+                } else {
+                    valueDisplay = document.createElement("span");
+                    valueDisplay.classList.add("value-display");
+                    valueDisplay.id = `value-${cc}`;
+                    valueDisplay.textContent = min;
+                }
+
+                wrapper.innerHTML = `
+                    <label for="slider-${cc}">${name}</label>
+                    <input type="range" id="slider-${cc}" min="${min}" max="${max}" value="${min}" class="midi-slider" data-cc="${cc}">
+                `;
+
+                const nameLabel = wrapper.querySelector(`label[for="slider-${cc}"]`);
+                if (nameLabel) {
+                    const tooltipText = desc || name;
+                    nameLabel.title = tooltipText;
+                    nameLabel.setAttribute("aria-label", desc ? `${name}. ${desc}` : name);
+                }
+
+                // Append our dynamically created elements
+                wrapper.appendChild(valueDisplay);
+                wrapper.appendChild(lockBtn);
+
+                const slider = wrapper.querySelector("input[type=range]");
+                slider.addEventListener("input", (event) => {
+                    const displayValue = parseInt(event.target.value, 10);
+                    sendCC(cc, displayValue, max);
+                    updateControlDisplay(cc, displayValue, { isVoiceWave, isLFO, isFXE });
+                    refreshPresetName();
+                });
+
+                return wrapper;
+            }
+
+            function createOscSection(controlList) {
+                const section = document.createElement("section");
+                section.classList.add("control-section", "osc");
+
+                const noteEl = document.createElement("p");
+                noteEl.classList.add("section-note");
+                noteEl.textContent = "Wave Freq A B C D";
+
+                const grid = document.createElement("div");
+                grid.style.display = "grid";
+                grid.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
+                grid.style.gap = "0.6rem";
+
+                const voiceLabels = ["A", "B", "C", "D"];
+                const waveCcs = [24, 25, 26, 27];
+                const freqCcs = [115, 116, 117, 118];
+                const fineCcs = [111, 112, 113, 114];
+                const oscCcs = [...waveCcs, ...freqCcs, ...fineCcs];
+
+                section.appendChild(createSectionHeader("OSC", oscCcs));
+                section.appendChild(noteEl);
+
+                voiceLabels.forEach((voice, index) => {
+                    const card = document.createElement("div");
+                    card.classList.add("slider-wrapper");
+                    card.style.padding = "0.55rem 0.45rem";
+                    card.style.gap = "0.25rem";
+
+                    const voiceLabel = document.createElement("div");
+                    voiceLabel.textContent = `VOICE ${voice}`;
+                    voiceLabel.style.color = "#8eb7e4";
+                    voiceLabel.style.fontSize = "0.72rem";
+                    voiceLabel.style.letterSpacing = "0.12em";
+                    voiceLabel.style.textTransform = "uppercase";
+
+                    const waveControl = controlsByCc.get(waveCcs[index]);
+                    const freqControl = controlsByCc.get(freqCcs[index]);
+                    const fineControl = controlsByCc.get(fineCcs[index]);
+                    const waveWrap = createControlElement(waveControl, true);
+                    const freqWrap = createControlElement(freqControl, true);
+                    freqWrap.classList.add("freq-mini");
+                    const freqLabel = freqWrap.querySelector("label");
+                    if (freqLabel) {
+                        freqLabel.style.opacity = "0.82";
+                    }
+                    const fineWrap = createControlElement(fineControl, true);
+                    fineWrap.classList.add("freq-mini");
+
+                    card.appendChild(voiceLabel);
+                    card.appendChild(waveWrap);
+                    card.appendChild(freqWrap);
+                    card.appendChild(fineWrap);
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                return section;
+            }
+
+            function createEnvelopeSection(title, note, ccs) {
+                const section = document.createElement("section");
+                section.classList.add("control-section", "envelope");
+
+                section.appendChild(createSectionHeader(title, ccs));
+
+                if (note) {
+                    const noteEl = document.createElement("p");
+                    noteEl.classList.add("section-note");
+                    noteEl.textContent = note;
+                    section.appendChild(noteEl);
+                }
+
+                const wrapper = document.createElement("div");
+                wrapper.classList.add("envelope-groups");
+
+                const subgroups = [
+                    { title: "Filter", ccs: ccs.slice(0, 4) },
+                    { title: "Amp", ccs: ccs.slice(4, 8) }
+                ];
+
+                subgroups.forEach((subgroup) => {
+                    const box = document.createElement("div");
+                    box.classList.add("envelope-subgroup");
+
+                    const subtitle = document.createElement("h4");
+                    subtitle.textContent = subgroup.title;
+                    box.appendChild(subtitle);
+
+                    const group = document.createElement("div");
+                    group.classList.add("section-controls");
+
+                    subgroup.ccs.forEach((cc) => {
+                        const control = controlsByCc.get(cc);
+                        if (!control) return;
+                        group.appendChild(createControlElement(control, true));
+                    });
+
+                    box.appendChild(group);
+                    wrapper.appendChild(box);
+                });
+
+                section.appendChild(wrapper);
+                return section;
+            }
+
+            function getLfoWavePath(value) {
+                const paths = {
+                    0: "M4 32 L24 8 L44 56 L64 8 L84 56 L104 8",      // Triangle
+                    1: "M4 56 L4 8 L24 8 L24 56 L44 56 L44 8 L64 8 L64 56 L84 56 L84 8 L104 8", // Square
+                    2: "M4 56 L24 8 L24 56 L44 8 L44 56 L64 8 L64 56 L84 8 L84 56 L104 8", // Sawtooth
+                    3: "M4 8 L24 56 L24 8 L44 56 L44 8 L64 56 L64 8 L84 56 L84 8 L104 56", // Ramp
+                    4: "M4 20 L16 20 L16 44 L30 44 L30 14 L46 14 L46 36 L62 36 L62 24 L78 24 L78 50 L94 50 L94 18 L104 18" // S&H
+                };
+                return paths[value] || paths[0];
+            }
+
+            function createLfoWavePreview(lfoNumber, initialValue = 0) {
+                const box = document.createElement("div");
+                box.classList.add("lfo-wave-preview");
+                box.id = `lfo-wave-preview-${lfoNumber}`;
+
+                const label = document.createElement("div");
+                label.classList.add("lfo-wave-preview-label");
+                label.textContent = `LFO ${lfoNumber} Shape`;
+                box.appendChild(label);
+
+                const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                svg.setAttribute("viewBox", "0 0 108 64");
+                svg.setAttribute("aria-hidden", "true");
+
+                const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                path.setAttribute("id", `lfo-wave-path-${lfoNumber}`);
+                path.setAttribute("d", getLfoWavePath(initialValue));
+
+                svg.appendChild(path);
+                box.appendChild(svg);
+                return box;
+            }
+
+            function updateLfoWavePreview(lfoNumber, waveValue) {
+                const path = document.getElementById(`lfo-wave-path-${lfoNumber}`);
+                if (!path) return;
+                path.setAttribute("d", getLfoWavePath(waveValue));
+            }
+
+            function createLfoSection(title, sectionClass, note, ccs) {
+                const section = document.createElement("section");
+                section.classList.add("control-section", sectionClass);
+
+                section.appendChild(createSectionHeader(title, ccs));
+
+                if (note) {
+                    const noteEl = document.createElement("p");
+                    noteEl.classList.add("section-note");
+                    noteEl.textContent = note;
+                    section.appendChild(noteEl);
+                }
+
+                const group = document.createElement("div");
+                group.classList.add("section-controls");
+
+                const waveformCc = ccs[0];
+                const rateCc = ccs[1];
+                const amountCc = ccs[2];
+
+                const waveformControl = createControlElement(controlsByCc.get(waveformCc), true);
+                waveformControl.classList.add("lfo-waveform-control");
+                group.appendChild(waveformControl);
+
+                const lfoNumber = sectionClass === "lfo1" ? 1 : 2;
+                const initialWaveValue = parseInt((document.querySelector(`[data-cc="${waveformCc}"]`) || { value: 0 }).value, 10) || 0;
+                group.appendChild(createLfoWavePreview(lfoNumber, initialWaveValue));
+
+                const rateControl = createControlElement(controlsByCc.get(rateCc), true);
+                rateControl.classList.add("lfo-rate-control");
+                group.appendChild(rateControl);
+
+                const amountControl = createControlElement(controlsByCc.get(amountCc), true);
+                amountControl.classList.add("lfo-amount-control");
+                group.appendChild(amountControl);
+
+                section.appendChild(group);
+                return section;
+            }
+
+            controlSections.forEach(({ title, sectionClass, note, ccs }) => {
+                if (sectionClass === "envelope") {
+                    controlsContainer.appendChild(createEnvelopeSection(title, note, ccs));
+                    return;
+                }
+
+                if (sectionClass === "lfo1" || sectionClass === "lfo2") {
+                    controlsContainer.appendChild(createLfoSection(title, sectionClass, note, ccs));
+                    return;
+                }
+
+                const section = document.createElement("section");
+                section.classList.add("control-section", sectionClass);
+
+                section.appendChild(createSectionHeader(title, ccs));
+
+                if (note) {
+                    const noteEl = document.createElement("p");
+                    noteEl.classList.add("section-note");
+                    noteEl.textContent = note;
+                    section.appendChild(noteEl);
+                }
+
+                const group = document.createElement("div");
+                group.classList.add("section-controls");
+
+                ccs.forEach((cc, controlIndex) => {
+                    const control = controlsByCc.get(cc);
+                    if (!control) return;
+                    const elem = controlSectionNeedsCompact(sectionClass) 
+                        ? createControlElement(control, true)
+                        : createControlElement(control);
+                    
+                    if (sectionClass === "fx") {
+                        if (controlIndex === 0) elem.classList.add("fx-type-control");
+                        if (controlIndex === 1) elem.classList.add("fx-rate-control");
+                        if (controlIndex === 2) elem.classList.add("fx-depth-control");
+                    }
+                    
+                    group.appendChild(elem);
+                });
+
+                if (sectionClass === "fx") {
+                    const fxDescriptionBox = document.createElement("div");
+                    fxDescriptionBox.classList.add("fx-engine-description");
+                    fxDescriptionBox.setAttribute("aria-live", "polite");
+
+                    const fxDescriptionTitle = document.createElement("div");
+                    fxDescriptionTitle.classList.add("fx-engine-title");
+                    fxDescriptionTitle.textContent = "Engine Description";
+
+                    const fxDescriptionText = document.createElement("div");
+                    fxDescriptionText.classList.add("fx-engine-text");
+                    fxDescriptionText.id = "fx-engine-description-text";
+                    //fxDescriptionText.textContent = "CHORUS: Original chorus engine.";
+
+                    //fxDescriptionBox.appendChild(fxDescriptionTitle);
+                    fxDescriptionBox.appendChild(fxDescriptionText);
+                    group.appendChild(fxDescriptionBox);
+                }
+
+                section.appendChild(group);
+                controlsContainer.appendChild(section);
+            });
+
+            function controlSectionNeedsCompact(sectionClass) {
+                return sectionClass === "lfo1" || sectionClass === "lfo2" || sectionClass === "filter" || sectionClass === "fx";
+            }
+
+            controlsContainer.appendChild(createOscSection());
+            refreshSectionLockButtons();
+
+            // Setup collapse for all control sections
+            document.querySelectorAll('.control-section, .top-controls-panel').forEach(section => {
+                setupSectionCollapse(section);
+            });
+
+            const initialFxEngineSlider = document.querySelector('[data-cc="9"]');
+            if (initialFxEngineSlider) {
+                updateFxEngineDescription(parseInt(initialFxEngineSlider.value, 10) || 0);
+            }
+
+            const sequenceLengthSelect = document.getElementById("sequence-length");
+            const sequenceTempoInput = document.getElementById("sequence-tempo");
+            const tempoBpmLabel = document.getElementById("tempo-bpm");
+            const sequenceRootSelect = document.getElementById("sequence-root");
+            const sequenceScaleSelect = document.getElementById("sequence-scale");
+            const sequenceDensityInput = document.getElementById("sequence-density");
+            const sequenceSwingInput = document.getElementById("sequence-swing");
+            const sequenceLoopInput = document.getElementById("sequence-loop");
+            const sequenceTempoToggle = document.getElementById("sequence-tempo-toggle");
+            const sequenceClockModeSelect = document.getElementById("sequence-clock-mode");
+            const sequenceDisplay = document.getElementById("sequence-display");
+
+            function setSequenceDisplayHtml(html) {
+                sequenceDisplay.innerHTML = html;
+                syncCollapsedSequenceDisplay();
+            }
+
+            function setSequenceDisplayText(text) {
+                sequenceDisplay.textContent = text;
+                syncCollapsedSequenceDisplay();
+            }
+
+            function updateTempoLabel() {
+                tempoBpmLabel.textContent = `${sequenceTempoInput.value} BPM`;
+            }
+
+            function getClockMode() {
+                return sequenceClockModeSelect.value;
+            }
+
+            function updateClockModeUi() {
+                const isClockIn = getClockMode() === "in";
+                sequenceTempoToggle.classList.toggle("is-hidden", isClockIn);
+            }
+
+            function blinkClockModeSignal() {
+                sequenceClockModeSelect.classList.add("clock-signal-blink");
+                if (clockSignalBlinkTimer) {
+                    clearTimeout(clockSignalBlinkTimer);
+                }
+                clockSignalBlinkTimer = setTimeout(() => {
+                    sequenceClockModeSelect.classList.remove("clock-signal-blink");
+                    clockSignalBlinkTimer = null;
+                }, 90);
+            }
+
+            sequenceTempoInput.addEventListener("input", updateTempoLabel);
+            sequenceTempoInput.addEventListener("input", restartClockOutIfNeeded);
+            sequenceClockModeSelect.addEventListener("change", () => {
+                stopSequence(false);
+                updateClockModeUi();
+                if (getClockMode() === "in") {
+                    setSequenceDisplayText("Clock mode set to IN. Press Play to arm.");
+                } else if (getClockMode() === "out") {
+                    setSequenceDisplayText("Clock mode set to OUT.");
+                } else {
+                    setSequenceDisplayText("Clock mode set to OFF.");
+                }
+            });
+            updateTempoLabel();
+            updateClockModeUi();
+
+            function noteName(note) {
+                const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+                return `${names[note % 12]}${Math.floor(note / 12) - 1}`;
+            }
+
+            function sendMidiClock() {
+                if (!midiOutput) return;
+                midiOutput.send([0xF8]);
+                blinkClockModeSignal();
+            }
+
+            function sendMidiStart() {
+                if (!midiOutput) return;
+                midiOutput.send([0xFA]);
+                logSentMessage("Transport", 250, 0);
+            }
+
+            function sendMidiStop() {
+                if (!midiOutput) return;
+                midiOutput.send([0xFC]);
+                logSentMessage("Transport", 252, 0);
+            }
+
+            function startClockOut(sendTransportStart = false) {
+                if (sequenceClockTimer || getClockMode() !== "out") return;
+                if (!sequenceAudioCtx || sequenceAudioCtx.state === "closed") {
+                    sequenceAudioCtx = new AudioContext();
+                }
+                if (sendTransportStart) {
+                    sendMidiStart();
+                }
+                nextClockTickTime = sequenceAudioCtx.currentTime;
+                scheduleClockOut();
+            }
+
+            function scheduleClockOut() {
+                if (!sequenceAudioCtx || getClockMode() !== "out") return;
+
+                const tempo = parseInt(sequenceTempoInput.value, 10);
+                const tickDuration = 60 / tempo / 24;
+                const lookAhead = 0.025;
+
+                while (nextClockTickTime < sequenceAudioCtx.currentTime + lookAhead) {
+                    sendMidiClock();
+                    nextClockTickTime += tickDuration;
+                }
+
+                const msToNext = (nextClockTickTime - sequenceAudioCtx.currentTime) * 1000;
+                sequenceClockTimer = setTimeout(scheduleClockOut, Math.max(1, msToNext - 4));
+            }
+
+            function stopClockOut(sendTransportStop = false) {
+                if (sequenceClockTimer) {
+                    clearTimeout(sequenceClockTimer);
+                    sequenceClockTimer = null;
+                }
+                if (sendTransportStop && getClockMode() === "out") {
+                    sendMidiStop();
+                }
+                if (sequenceAudioCtx) {
+                    sequenceAudioCtx.close();
+                    sequenceAudioCtx = null;
+                }
+            }
+
+            function restartClockOutIfNeeded() {
+                if (!sequenceIsPlaying || getClockMode() !== "out") return;
+                stopClockOut(false);
+                startClockOut(false);
+            }
+
+            function getScaleIntervals(scale) {
+                const scales = {
+                    major: [0, 2, 4, 5, 7, 9, 11],
+                    minor: [0, 2, 3, 5, 7, 8, 10],
+                    pentatonic: [0, 3, 5, 7, 10],
+                    dorian: [0, 2, 3, 5, 7, 9, 10]
+                };
+                return scales[scale] || scales.minor;
+            }
+
+            function buildMusicalSequence() {
+                const steps = parseInt(sequenceLengthSelect.value, 10);
+                const root = parseInt(sequenceRootSelect.value, 10);
+                const scale = sequenceScaleSelect.value;
+                const density = parseInt(sequenceDensityInput.value, 10);
+                const intervals = getScaleIntervals(scale);
+
+                generatedSequence = Array.from({ length: steps }, (_, index) => {
+                    const useNote = Math.floor(Math.random() * 8) < density;
+                    const degree = intervals[Math.floor(Math.random() * intervals.length)];
+                    const octaveShift = index % 8 === 7 ? 12 : (Math.random() > 0.8 ? 12 : 0);
+                    const note = useNote ? root + degree + octaveShift : root + intervals[0];
+                    const velocity = Math.floor(88 + Math.random() * 32);
+                    return {
+                        note: Math.max(36, Math.min(96, note)),
+                        velocity,
+                        gate: Math.random() > 0.2
+                    };
+                });
+
+                renderSequence(generatedSequence);
+                console.log(`Generated musical sequence (${scale}, root ${noteName(root)})`);
+            }
+
+            function renderSequence(sequence) {
+                setSequenceDisplayHtml(`<strong>Sequence:</strong> ${sequence.map((step, index) => `${index + 1}:${noteName(step.note)}`).join(" · ")}`);
+            }
+
+            function generateSequence() {
+                buildMusicalSequence();
+            }
+
+            function renderPlayingStep(index) {
+                const current = generatedSequence[index];
+                setSequenceDisplayHtml(`<strong>Playing:</strong> ${noteName(current.note)} <span style="color:#7fa5cc">(${index + 1}/${generatedSequence.length})</span><br>${generatedSequence.map((step, stepIndex) => stepIndex === index ? `<span style="color:#8cc7ff">${noteName(step.note)}</span>` : noteName(step.note)).join(" · ")}`);
+            }
+
+            function playSequenceStep(index) {
+                const step = generatedSequence[index];
+                if (!step) return;
+
+                if (activeSequenceNote !== null) {
+                    sendNoteOff(activeSequenceNote);
+                    activeSequenceNote = null;
+                }
+
+                if (step.gate) {
+                    sendNoteOn(step.note, step.velocity);
+                    activeSequenceNote = step.note;
+                }
+
+                renderPlayingStep(index);
+            }
+
+            function onExternalMidiStart() {
+                if (getClockMode() !== "in") {
+                    return;
+                }
+                if (!sequenceArmed) {
+                    return;
+                }
+
+                if (generatedSequence.length === 0) {
+                    buildMusicalSequence();
+                }
+
+                if (generatedSequence.length === 0) return;
+
+                sequenceIsPlaying = true;
+                sequenceStepIndex = 0;
+                externalClockTickCount = 0;
+                syncCollapsedSequenceDisplay();
+                playSequenceStep(sequenceStepIndex);
+            }
+
+            function stopSequence(sendTransportStop = true) {
+                if (sequenceTimer) {
+                    clearTimeout(sequenceTimer);
+                    sequenceTimer = null;
+                }
+                stopClockOut(sendTransportStop);
+                if (activeSequenceNote !== null) {
+                    sendNoteOff(activeSequenceNote);
+                    activeSequenceNote = null;
+                }
+                sequenceArmed = false;
+                sequenceIsPlaying = false;
+                sequenceStepIndex = 0;
+                externalClockTickCount = 0;
+                syncCollapsedSequenceDisplay();
+                if (generatedSequence.length > 0) {
+                    renderSequence(generatedSequence);
+                } else {
+                    setSequenceDisplayText("No sequence generated yet.");
+                }
+            }
+
+            function playInternalSequence() {
+                const tempo = parseInt(sequenceTempoInput.value, 10);
+                const stepSec = (60 / tempo) / 2;
+                const swingRatio = parseInt(sequenceSwingInput.value, 10) / 100;
+                const swingSec = stepSec * swingRatio;
+
+                let nextStepTime = sequenceAudioCtx ? sequenceAudioCtx.currentTime : performance.now() / 1000;
+
+                const playStep = () => {
+                    if (!sequenceIsPlaying || getClockMode() === "in") return;
+
+                    if (sequenceStepIndex >= generatedSequence.length) {
+                        if (sequenceLoopInput.checked) {
+                            sequenceStepIndex = 0;
+                        } else {
+                            stopSequence(getClockMode() === "out");
+                            return;
+                        }
+                    }
+
+                    playSequenceStep(sequenceStepIndex);
+                    nextStepTime += stepSec + (sequenceStepIndex % 2 !== 0 ? swingSec : 0);
+                    sequenceStepIndex += 1;
+
+                    const nowSec = sequenceAudioCtx ? sequenceAudioCtx.currentTime : performance.now() / 1000;
+                    const msToNext = (nextStepTime - nowSec) * 1000;
+                    sequenceTimer = setTimeout(playStep, Math.max(1, msToNext - 4));
+                };
+
+                playStep();
+            }
+
+            function playSequence() {
+                if (generatedSequence.length === 0) {
+                    buildMusicalSequence();
+                }
+
+                if (generatedSequence.length === 0) return;
+
+                stopSequence(false);
+                sequenceArmed = true;
+                sequenceStepIndex = 0;
+                externalClockTickCount = 0;
+
+                if (getClockMode() === "in") {
+                    sequenceIsPlaying = false;
+                    setSequenceDisplayText("Armed: waiting for MIDI Start...");
+                    return;
+                }
+
+                sequenceIsPlaying = true;
+                syncCollapsedSequenceDisplay();
+
+                if (getClockMode() === "out") {
+                    startClockOut(true);
+                }
+
+                playInternalSequence();
+            }
+
+            function onExternalMidiClock() {
+                if (getClockMode() !== "in") return;
+                blinkClockModeSignal();
+                if (!sequenceArmed || !sequenceIsPlaying || generatedSequence.length === 0) return;
+
+                externalClockTickCount += 1;
+                if (externalClockTickCount < midiClockTicksPerStep) {
+                    return;
+                }
+
+                externalClockTickCount = 0;
+                sequenceStepIndex += 1;
+
+                if (sequenceStepIndex >= generatedSequence.length) {
+                    if (sequenceLoopInput.checked) {
+                        sequenceStepIndex = 0;
+                    } else {
+                        stopSequence();
+                        return;
+                    }
+                }
+
+                playSequenceStep(sequenceStepIndex);
+            }
+
+            document.getElementById("generate-sequence-btn").addEventListener("click", generateSequence);
+            document.getElementById("play-sequence-btn").addEventListener("click", playSequence);
+            document.getElementById("stop-sequence-btn").addEventListener("click", stopSequence);
+
+            // Generate random values (only for unlocked controls)
+            function randomizeUnlockedControls() {
+                console.log("Generating random values for unlocked controls");
+                controls.forEach(({ cc, min, max, isVoiceWave, isLFO, isFXE }) => {
+                    if (!lockedControls.has(cc)) {
+                        const randomDisplayValue = Math.floor(Math.random() * (max - min + 1)) + min;
+                        
+                        // Update the slider with the display value
+                        document.querySelector(`[data-cc="${cc}"]`).value = randomDisplayValue;
+
+                        updateControlDisplay(cc, randomDisplayValue, { isVoiceWave, isLFO, isFXE });
+                        
+                        // Send the MIDI message with proper mapping
+                        sendCC(cc, randomDisplayValue, max);
+                    } else {
+                        // For locked controls - send current slider value
+                        const slider = document.querySelector(`[data-cc="${cc}"]`);
+                        const currentValue = parseInt(slider.value, 10);
+                        sendCC(cc, currentValue, max);
+                        
+                        // Log that we're sending the locked control's current value
+                        const controlName = getCCName(cc);
+                        console.log(`Sending locked control current value: ${controlName} (CC ${cc}) = ${currentValue}`);
+                    }
+                });
+                // Update the preset name after randomization
+                refreshPresetName();
+            }
+
+            document.getElementById("randomize-btn").addEventListener("click", randomizeUnlockedControls);
+
+            // Create MIDI keyboard
+            const keyboard = document.getElementById("keyboard");
+            const keyboardInner = document.createElement("div");
+            keyboardInner.className = "keyboard-inner";
+
+            const keyboardNotes = Array.from({ length: 27 }, (_, index) => 53 + index);
+            const blackPitchClasses = new Set([1, 3, 6, 8, 10]);
+            const blackNotes = new Set(keyboardNotes.filter((note) => blackPitchClasses.has(note % 12)));
+            const whiteNotes = keyboardNotes.filter((note) => !blackNotes.has(note));
+            const whiteCount = whiteNotes.length;
+            const whiteIndexByNote = new Map();
+            whiteNotes.forEach((note, index) => {
+                whiteIndexByNote.set(note, index);
+            });
+            let whiteIndex = 0;
+
+            keyboardNotes.forEach((note) => {
+                const isBlack = blackNotes.has(note);
+                const key = document.createElement("div");
+                key.className = isBlack ? "black-key" : "white-key";
+                key.dataset.note = String(note);
+                key.setAttribute("role", "button");
+                key.setAttribute("tabindex", "0");
+                key.setAttribute("aria-label", `MIDI note ${note}`);
+                key.innerHTML = `<span>${noteName(note)}</span>`;
+
+                const noteOn = () => {
+                    key.classList.add("active");
+                    sendNoteOn(note, 127);
+                };
+
+                const noteOff = () => {
+                    key.classList.remove("active");
+                    sendNoteOff(note);
+                };
+
+                key.addEventListener("mousedown", noteOn);
+                key.addEventListener("mouseup", noteOff);
+                key.addEventListener("mouseleave", noteOff);
+                //key.addEventListener("mouseover", noteOn);
+                key.addEventListener("touchstart", (event) => {
+                    event.preventDefault();
+                    noteOn();
+                }, { passive: false });
+                key.addEventListener("touchend", noteOff);
+                key.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        noteOn();
+                    }
+                });
+                key.addEventListener("keyup", (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        noteOff();
+                    }
+                });
+
+                if (isBlack) {
+                    const leftWhiteNote = note - 1;
+                    const leftWhiteIndex = whiteIndexByNote.get(leftWhiteNote);
+                    const blackCenterOffset = 1 - (0.62 / 2);
+                    key.style.left = `calc((100% / ${whiteCount}) * ${leftWhiteIndex + blackCenterOffset})`;
+                } else {
+                    key.style.left = `calc((100% / ${whiteCount}) * ${whiteIndex})`;
+                    whiteIndex += 1;
+                }
+
+                keyboardInner.appendChild(key);
+            });
+
+            keyboard.appendChild(keyboardInner);
+
+            // Listen for incoming MIDI messages
+            inputs.forEach(input => {
+                input.addEventListener("midimessage", (message) => {
+                    const [status, data1, data2] = message.data;
+                    const messageType = status & 0xF0;
+                    const channel = status < 0xF0 ? (status & 0x0F) + 1 : null;
+
+                    //logReceivedMessage("debug cc messages not arriving", status, data1, data2);
+                    if (messageType === 0xB0) {  // CC message
+                        const controlName = getCCName(data1);
+                        logReceivedMessage("CC", status, data1, data2, controlName, channel);
+                        const control = controls.find(c => c.cc === data1);
+                        if (control) {
+                            // Convert MIDI value (0-127) to display value (0-max)
+                            const displayValue = toDisplayValue(data2, control.max);
+                            
+                            // Update the slider with the display value
+                            document.querySelector(`[data-cc="${data1}"]`).value = displayValue;
+
+                            updateControlDisplay(data1, displayValue, control);
+                        }
+                    } else if (messageType === 0x90 || messageType === 0x80) {  // Note On/Off
+                        const type = messageType === 0x90 ? "Note On" : "Note Off";
+                        logReceivedMessage(type, status, data1, data2, null, channel);
+                    } else if (status === 0xFA) {
+                        logReceivedMessage("Transport", status, data1, data2, null, channel);
+                        onExternalMidiStart();
+                    } else if (status === 0xFC) {
+                        logReceivedMessage("Transport", status, data1, data2, null, channel);
+                        if (getClockMode() === "in") {
+                            stopSequence(false);
+                        }
+                    } else if (status === 0xF8) {
+                        onExternalMidiClock();
+                        logReceivedMessage("Clock", status, data1, data2, null, channel);
+                    } else {
+                        //ignore 254 (Active Sensing) and 248 (Timing Clock) messages to reduce noise in the logs
+                        //if (status !== 0xFE && status !== 0xF8) {
+                        if (status !== 0xFE ) {
+                            logReceivedMessage("Unknown message", status, data1, data2, null, channel);
+                        }
+                    }
+                });
+            });
+
+            randomizeUnlockedControls();
+            console.log("MIDI controller initialized");
+        });
+    </script>
+</body>
+</html>
